@@ -12,6 +12,17 @@ function Client.get_omnisharp_client()
   error()
 end
 
+function Client.make_basic_request_params()
+  local pos = vim.lsp.util.make_position_params()
+  local file_name = vim.fn.expand("%:p")
+
+  return {
+    fileName = file_name,
+    column = pos.position.column,
+    line = pos.position.line,
+  }
+end
+
 --- Make a request on the omnisharp server asynchronously
 ---@param endpoint The omnisharp endpoint
 ---@param params Request parameters
