@@ -1,10 +1,6 @@
 local omnisharp_client = require("neotest-dotnet.omnisharp-lsp.client")
 local OmnisharpRequests = {}
 
-local debugStarted = false
-local waitingForDebugger = false
-local dotnet_test_pid
-
 local omnisharpEndpoints = {
   reanalyze = "o#/reanalyze",
   project = "o#/project",
@@ -64,14 +60,44 @@ end
 ---               testFrameworkName?: "indicates test framework. Only present if this element is a test method",
 ---               testMethodName?: "Fully qualified test name. Only if this element is test method"
 ---             },
----             Ranges = {}
+---             Ranges = {
+---               attributes = {
+---                 Start = {
+---                   Line: "start line of element",
+---                   Column: "start column of element"
+---                 },
+---                 End = {
+---                   Line: "end line of element",
+---                   Column: "end column of element"
+---                 }
+---               }
+---               full = {
+---                 Start = {
+---                   Line: "start line of element",
+---                   Column: "start column of element"
+---                 },
+---                 End = {
+---                   Line: "end line of element",
+---                   Column: "end column of element"
+---                 }
+---               }
+---               name = {
+---                 Start = {
+---                   Line: "start line of element",
+---                   Column: "start column of element"
+---                 },
+---                 End = {
+---                   Line: "end line of element",
+---                   Column: "end column of element"
+---                 }
+---               }
+---             }
 ---           }
----          }
----        }
+---         }
 ---      }
 ---   }
-function OmnisharpRequests.get_code_structure()
-  local params = omnisharp_client.make_basic_request_params()
+function OmnisharpRequests.get_code_structure(file_name)
+  local params = omnisharp_client.make_basic_request_params(file_name)
 
   local response = omnisharp_client.make_request(omnisharpEndpoints.codestructure, params)
 

@@ -12,9 +12,9 @@ function Client.get_omnisharp_client()
   error()
 end
 
-function Client.make_basic_request_params()
+function Client.make_basic_request_params(file_name)
   local pos = vim.lsp.util.make_position_params()
-  local file_name = vim.fn.expand("%:p")
+  file_name = file_name or vim.fn.expand("%:p")
 
   return {
     fileName = file_name,
