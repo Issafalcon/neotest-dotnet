@@ -1,26 +1,36 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
 local Path = require("plenary.path")
+local Tree = require("neotest.types").Tree
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
+local parser = require("neotest-dotnet.parser")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
-DotnetNeotestAdapter.root = lib.files.match_root_pattern(".csproj", ".fsproj")
+DotnetNeotestAdapter.root = lib.files.match_root_pattern("csproj", "fsproj")
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
   -- TODO: Add logging and test this function
   if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
     local tests = omnisharp_commands.get_tests_in_file(file_path)
-    return #tests > 0
-  end
 
-  return false
+    local is_test_file = #tests > 0
+    return is_test_file
+  else
+    return false
+  end
 end
 
-DotnetNeotestAdapter.discover_positions = function (path)
-  -- TODO: Parse the code_structure obtained from the omnisharp_lsp into the appropraite tree structure
-  -- Review how neoterst-vim-test parses into a tree structure (and then reverses it)
+DotnetNeotestAdapter.discover_positions = function(path)
+  -- TODO: Figure out why neotest doesn't call into this function
   local code_structure = omnisharp_commands.get_code_structure(path)
+  local root_node = parser.create_root_node(path)
+  local parsed_list = parser.parse(code_structure, root_node[2], path)
+  local tree = Tree.from_list(parsed_list, function(pos)
+    return pos.id
+  end)
+
+  return tree
 end
 
 setmetatable(DotnetNeotestAdapter, {
