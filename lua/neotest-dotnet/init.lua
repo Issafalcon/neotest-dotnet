@@ -15,7 +15,7 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
   if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
     async.util.scheduler()
     local tests = omnisharp_commands.get_tests_in_file(file_path)
-    
+
     local is_test_file = #tests > 0
     return is_test_file
   else
@@ -24,12 +24,9 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
 end
 
 DotnetNeotestAdapter.discover_positions = function(path)
-  -- TODO: Figure out how the async scheduler works in the context of this function
-  async.util.scheduler()
   local code_structure = omnisharp_commands.get_code_structure(path)
   local root_node = parser.create_root_node(path)
-  local parsed_list = parser.parse(code_structure, root_node[2], path)
-  put(parsed_list)
+  local parsed_list = parser.parse(code_structure.Elements, root_node[2], path)
   local tree = Tree.from_list(parsed_list, function(pos)
     return pos.id
   end)

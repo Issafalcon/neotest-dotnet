@@ -1,4 +1,5 @@
 local omnisharp_client = require("neotest-dotnet.omnisharp-lsp.client")
+local async = require("neotest.async")
 local OmnisharpRequests = {}
 
 local omnisharpEndpoints = {
@@ -38,7 +39,7 @@ end
 local function find_test(tests)
   for _, test in ipairs(tests) do
     local test_ranges = test.Ranges.full
-    if vim.fn.line(".") >= test_ranges.Start.Line and vim.fn.line(".") <= test_ranges.End.Line then
+    if async.fn.line(".") >= test_ranges.Start.Line and async.fn.line(".") <= test_ranges.End.Line then
       return test
     end
   end

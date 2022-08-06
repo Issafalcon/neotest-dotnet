@@ -1,4 +1,5 @@
 local Client = {}
+local async = require("neotest.async")
 
 function Client.get_omnisharp_client()
   local clients = vim.lsp.buf_get_clients(0)
@@ -14,7 +15,7 @@ end
 
 function Client.make_basic_request_params(file_name)
   local pos = vim.lsp.util.make_position_params()
-  file_name = file_name or vim.fn.expand("%:p")
+  file_name = file_name or async.fn.expand("%:p")
 
   return {
     fileName = file_name,
@@ -39,7 +40,7 @@ function Client.make_request_async(endpoint, params, callback)
     local status, id = lsp_client.request(endpoint, params, callback)
 
     if not status then
-      vim.api.nvim_err_writeln("Error when executing " .. endpoint .. " : " .. id)
+      async.api.nvim_err_writeln("Error when executing " .. endpoint .. " : " .. id)
       return
     end
   end
@@ -56,7 +57,7 @@ function Client.make_request(endpoint, params)
     local result, err = lsp_client.request_sync(endpoint, params, 100000)
 
     if err then
-      vim.api.nvim_err_writeln("Error when executing " .. endpoint .. " : " .. err)
+      async.api.nvim_err_writeln("Error when executing " .. endpoint .. " : " .. err)
       return
     end
 
