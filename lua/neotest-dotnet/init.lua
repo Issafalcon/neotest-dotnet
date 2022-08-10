@@ -8,7 +8,7 @@ local parser = require("neotest-dotnet.parser")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
-DotnetNeotestAdapter.root = lib.files.match_root_pattern("csproj", "fsproj")
+DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
   -- TODO: Add logging and test this function
@@ -32,6 +32,39 @@ DotnetNeotestAdapter.discover_positions = function(path)
   end)
 
   return tree
+end
+
+DotnetNeotestAdapter.build_spec = function(args)
+  local position = args.tree:data()
+  -- local test_file_bufnr = vim.fn.bufnr(position.path)
+  -- local csproj = omnisharp_commands.get_project(position.path, test_file_bufnr).result.MsBuildProject.Path
+
+  if position.type == "dir" then
+    return
+  end
+
+  -- This returns the directory of the .csproj or .fsproj file. The dotnet command works with the directory name, rather
+  -- than the full path to the file.
+  local project_dir = DotnetNeotestAdapter.root(position.path)
+
+  -- Logs files to standard output of a trx file in the 'TestResults' directory at the project root
+  local command = {
+    "dotnet",
+    "test",
+    project_dir,
+    "--logger",
+    "trx",
+    "--filter",
+    '"FullyQualifiedName~' .. position.name .. '"'
+  }
+  local command_string = table.concat(command, " ");
+
+  return {
+    command = command_string,
+    context = {
+      pos_id = position.id,
+    }
+  }
 end
 
 setmetatable(DotnetNeotestAdapter, {

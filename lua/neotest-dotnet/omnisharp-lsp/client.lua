@@ -1,8 +1,9 @@
 local Client = {}
 local async = require("neotest.async")
 
-function Client.get_omnisharp_client()
-  local clients = vim.lsp.buf_get_clients(0)
+function Client.get_omnisharp_client(bufnr)
+  bufnr = bufnr or 0
+  local clients = vim.lsp.buf_get_clients(bufnr)
   for _, client in pairs(clients) do
     if client.name == "omnisharp" then
       return client
@@ -30,7 +31,7 @@ end
 ---@param callback The callback to invoke with the response from the server
 ---       when its ready. Format is function({err=<error_message>, result=<response>})
 function Client.make_request_async(endpoint, params, callback)
-  local status_ok, lsp_client = pcall(Client.get_omnisharp_client)
+  local status_ok, lsp_client = pcall(Client.get_omnisharp_client, bufnr)
 
   if not status_ok then
     error("Omnisharp client is not attached. Cannot make request to server")
@@ -46,8 +47,8 @@ function Client.make_request_async(endpoint, params, callback)
   end
 end
 
-function Client.make_request(endpoint, params)
-  local status_ok, lsp_client = pcall(Client.get_omnisharp_client)
+function Client.make_request(endpoint, params, bufnr)
+  local status_ok, lsp_client = pcall(Client.get_omnisharp_client, bufnr)
 
   if not status_ok then
     error()

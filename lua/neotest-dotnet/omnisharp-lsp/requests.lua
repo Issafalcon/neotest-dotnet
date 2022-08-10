@@ -112,4 +112,11 @@ function OmnisharpRequests.get_tests_in_file(file_name)
   return tests
 end
 
+function OmnisharpRequests.get_project(file_name, bufnr)
+  local params = omnisharp_client.make_basic_request_params(file_name)
+
+  local response = omnisharp_client.make_request(omnisharpEndpoints.project, params, bufnr)
+  return response
+end
+
 return OmnisharpRequests
