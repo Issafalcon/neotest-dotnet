@@ -47,24 +47,64 @@ DotnetNeotestAdapter.build_spec = function(args)
   -- than the full path to the file.
   local project_dir = DotnetNeotestAdapter.root(position.path)
 
+  local result_file_name = "neotest-" .. os.date("%Y%m%d-%H%M%S") .. ".trx"
+  local plen_path = Path:new(project_dir, "TestResults", result_file_name)
+
   -- Logs files to standard output of a trx file in the 'TestResults' directory at the project root
   local command = {
     "dotnet",
     "test",
     project_dir,
-    "--logger",
-    "trx",
     "--filter",
-    '"FullyQualifiedName~' .. position.name .. '"'
+    '"FullyQualifiedName~' .. position.name .. '"',
+    "--logger",
+    '"trx;logfilename=' .. result_file_name .. '"',
   }
-  local command_string = table.concat(command, " ");
+
+  local command_string = table.concat(command, " ")
 
   return {
     command = command_string,
     context = {
       pos_id = position.id,
-    }
+      results_path = plen_path.filename,
+    },
   }
+end
+
+local function remove_bom(str)
+  if string.byte(str, 1) == 239 and string.byte(str, 2) == 187 and string.byte(str, 3) == 191 then
+    str = string.char(string.byte(str, 4, string.len(str)))
+  end
+  return str
+end
+
+---@async
+---@param spec neotest.RunSpec
+---@param b neotest.StrategyResult
+---@param tree neotest.Tree
+---@return neotest.Result[]
+DotnetNeotestAdapter.results = function(spec, b, tree)
+  -- From luarocks module
+  local xml2lua = require("xml2lua")
+  local handler = require("xmlhandler.tree")
+  local xml_parser = xml2lua.parser(handler)
+  local output_file = spec.context.results_path
+
+  local success, xml = pcall(xml2lua.loadFile, output_file)
+
+  if not success then
+    logger.error("No test output file found ", output_file)
+    return {}
+  end
+
+  local no_bom_xml = remove_bom(xml)
+  xml_parser:parse(no_bom_xml)
+  -- xml2lua.printable(handler.root.TestRun)
+  -- xml2lua.printable(handler.root.TestRun._attr.id)
+
+  -- TODO: Take the parsed xml and create a neotest.Result[]
+  return {}
 end
 
 setmetatable(DotnetNeotestAdapter, {
