@@ -16,7 +16,7 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     async.util.scheduler()
     local tests = omnisharp_commands.get_tests_in_file(file_path)
 
-    local is_test_file = #tests > 0
+    local is_test_file = tests ~= nil and #tests > 0
     return is_test_file
   else
     return false
@@ -74,7 +74,7 @@ end
 
 local function remove_bom(str)
   if string.byte(str, 1) == 239 and string.byte(str, 2) == 187 and string.byte(str, 3) == 191 then
-    str = string.char(string.byte(str, 4, string.len(str)))
+    str = string.sub(str, 4)
   end
   return str
 end

@@ -11,7 +11,6 @@ function Client.get_omnisharp_client(bufnr)
   end
 
   print("'omnisharp' lsp client not attached to buffer. Please wait for client to be ready.")
-  error()
 end
 
 function Client.make_basic_request_params(file_name)
