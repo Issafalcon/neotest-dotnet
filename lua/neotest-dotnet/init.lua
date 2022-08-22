@@ -48,7 +48,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   local project_dir = DotnetNeotestAdapter.root(position.path)
 
   local result_file_name = "neotest-" .. os.date("%Y%m%d-%H%M%S") .. ".trx"
-  local plen_path = Path:new(project_dir, "TestResults", result_file_name)
+  local result_path = Path:new(project_dir, "TestResults", result_file_name)
 
   -- Logs files to standard output of a trx file in the 'TestResults' directory at the project root
   local command = {
@@ -67,7 +67,7 @@ DotnetNeotestAdapter.build_spec = function(args)
     command = command_string,
     context = {
       pos_id = position.id,
-      results_path = plen_path.filename,
+      results_path = result_path,
     },
   }
 end
@@ -84,14 +84,11 @@ end
 ---@param b neotest.StrategyResult
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
-DotnetNeotestAdapter.results = function(spec, b, tree)
+DotnetNeotestAdapter.results = function(spec, result, tree)
   -- From luarocks module
-  local xml2lua = require("xml2lua")
-  local handler = require("xmlhandler.tree")
-  local xml_parser = xml2lua.parser(handler)
-  local output_file = spec.context.results_path
+  local output_file = spec.context.results_path.filename
 
-  local success, xml = pcall(xml2lua.loadFile, output_file)
+  local success, xml = pcall(lib.files.read, output_file)
 
   if not success then
     logger.error("No test output file found ", output_file)
@@ -99,12 +96,45 @@ DotnetNeotestAdapter.results = function(spec, b, tree)
   end
 
   local no_bom_xml = remove_bom(xml)
-  xml_parser:parse(no_bom_xml)
-  -- xml2lua.printable(handler.root.TestRun)
-  -- xml2lua.printable(handler.root.TestRun._attr.id)
+  local xml_output = lib.xml.parse(no_bom_xml)
 
-  -- TODO: Take the parsed xml and create a neotest.Result[]
-  return {}
+  put("Tree")
+  put(tree)
+  put("Result")
+  put(result)
+  local pos_id = spec.context.pos_id
+  local tests = {
+    [pos_id] = {
+      status = result.code == 0 and "passed" or "failed",
+      errors = {},
+    },
+  }
+
+  local test_results = xml_output.TestRun.Results
+
+  if #test_results.UnitTestResult > 1 then
+    test_results = test_results.UnitTestResult
+  end
+
+  for _, value in pairs(test_results) do
+    if value._attr.testName ~= nil then
+      local outcome = value._attr.outcome
+      tests[pos_id] = {
+        status = string.lower(outcome),
+        short = value._attr.testName .. ":" .. value._attr.outcome,
+        output = output_file,
+        errors = {},
+      }
+
+      if outcome == "Failed" then
+        table.insert(tests[pos_id].errors, {
+          message = value.Output.ErrorInfo.Message .. "\n" .. value.Output.ErrorInfo.StackTrace,
+        })
+      end
+    end
+  end
+
+  return tests
 end
 
 setmetatable(DotnetNeotestAdapter, {
