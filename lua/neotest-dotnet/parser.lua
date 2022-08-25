@@ -34,9 +34,8 @@ end
 ---@param node_id any The id of the code element used to identify the Tree item in neotest
 ---@return table The list of nodes that neotest can use to create a Tree.
 Parser.parse = function(code_elements, node, file_path, node_id)
-local xml2lua = require("xml2lua")
-local handler = require("xmlhandler.tree")
   node_id = node_id or file_path
+  node = node or {}
 
   for _, element in ipairs(code_elements) do
     local current_id = node_id .. "::" .. element.Name
