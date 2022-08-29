@@ -179,7 +179,8 @@ DotnetNeotestAdapter.results = function(spec, result, tree)
   end
 
   if success then
-    return result_utils.marshal_dotnet_console_output(results, get_test_nodes_data(tree))
+    result_utils.marshal_dotnet_console_output(results)
+    return {}
   end
 
   -- local no_bom_xml = remove_bom(xml)
