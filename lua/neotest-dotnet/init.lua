@@ -5,6 +5,7 @@ local Path = require("plenary.path")
 local Tree = require("neotest.types").Tree
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local parser = require("neotest-dotnet.parser")
+local result_utils = require("neotest-dotnet.result-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
@@ -85,25 +86,30 @@ DotnetNeotestAdapter.build_spec = function(args)
   local fqn
   for segment in string.gmatch(position.id, "([^::]+)") do
     if not string.find(segment, ".cs$") then
-      put(segment)
       fqn = fqn and fqn .. "." .. segment or segment
     end
   end
 
-  put("FQN = ")
-  put(fqn)
+  local project_dir = DotnetNeotestAdapter.root(position.path)
+  local result_file_name = "neotest-" .. os.date("%Y%m%d-%H%M%S") .. ".trx"
+  local result_path = Path:new(project_dir, "TestResults", result_file_name)
+
   -- This returns the directory of the .csproj or .fsproj file. The dotnet command works with the directory name, rather
   -- than the full path to the file.
-  local test_input = DotnetNeotestAdapter.root(position.path)
+  local test_root = project_dir
 
   local filter = ""
   if position.type == "dir" then
-    test_input = vim.fn.fnamemodify(position.path, ":p:h")
+    return {}
   end
   if position.type == "file" then
+    -- TODO: Filename not specific enough to filter on with the match expression. Can be more robust depending on the
+    --      available filter expressions of the framework
     filter = '--filter "FullyQualifiedName~' .. vim.fn.fnamemodify(position.name, ":r") .. '"'
   end
   if position.type == "namespace" then
+    -- TODO: Namespace not specific enough, but will currenty run tests in namespaces with similar name
+    --     Better to figure out the test framework and then filter based on available filtering criteria for that specific framework
     filter = '--filter "FullyQualifiedName~' .. fqn .. '"'
   end
   if position.type == "test" then
@@ -114,7 +120,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   local command = {
     "dotnet",
     "test",
-    test_input,
+    test_root,
     filter,
     "--logger",
     '"console;verbosity=detailed"',
@@ -140,6 +146,22 @@ local function remove_bom(str)
   return str
 end
 
+local function get_test_nodes_data(tree)
+  local test_nodes = {}
+  for _, node in tree:iter_nodes() do
+    if node:data().type == "test" then
+      local test_node = {
+        name = node:data().name,
+        path = node:data().path,
+        id = node:data().id,
+      }
+      table.insert(test_nodes, test_node)
+    end
+  end
+
+  return test_nodes
+end
+
 ---@async
 ---@param spec neotest.RunSpec
 ---@param b neotest.StrategyResult
@@ -148,7 +170,8 @@ end
 DotnetNeotestAdapter.results = function(spec, result, tree)
   -- From luarocks module
 
-  local success, xml = pcall(lib.files.read, result.output)
+  local success, results = pcall(lib.files.read, result.output)
+  local test_nodes = get_test_nodes_data(tree)
 
   if not success then
     logger.error("No test output file found ")
@@ -156,8 +179,7 @@ DotnetNeotestAdapter.results = function(spec, result, tree)
   end
 
   if success then
-    put(xml)
-    return {}
+    return result_utils.marshal_dotnet_console_output(results, get_test_nodes_data(tree))
   end
 
   -- local no_bom_xml = remove_bom(xml)
