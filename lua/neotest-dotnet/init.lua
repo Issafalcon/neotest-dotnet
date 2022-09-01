@@ -1,10 +1,10 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
 local async = require("neotest.async")
-local Path = require("plenary.path")
-local Tree = require("neotest.types").Tree
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
-local parser = require("neotest-dotnet.parser")
+local result_utils = require("neotest-dotnet.result-utils")
+local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
+local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
@@ -31,78 +31,28 @@ DotnetNeotestAdapter.discover_positions = function(path)
         name: (qualified_name) @namespace.name
     ) @namespace.definition
 
-    ;; Matches `[TestClass]`
-    (class_declaration
-      (attribute_list
-        (attribute
-          name: (identifier) @attribute_name (#any-of? @attribute_name "TestClass")
-        )
-      )
-      name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches SpecFlow generated classes
-    (class_declaration
-      (attribute_list
-        (attribute 
-          (attribute_argument_list
-            (attribute_argument
-              (string_literal) @attribute_argument (#match? @attribute_argument "SpecFlow\"$")
-            )
-          )
-        )
-      ) 
-      name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; --Test
-    ;; Matches `[TestMethod]`
-    (method_declaration
-      (attribute_list
-        (attribute
-          name: (identifier) @attribute_name (#any-of? @attribute_name TestMethod)
-        )
-      )
-      name: (identifier) @test.name
-    ) @test.definition
-
-    (method_declaration
-      (attribute_list
-        (attribute
-          name: (qualified_name) @attribute_name (#match? @attribute_name "SkippableFactAttribute$")
-        )
-      )
-      name: (identifier) @test.name
-    ) @test.definition
-  ]]
+  ]] .. unit_test_queries .. specflow_queries
   local tree = lib.treesitter.parse_positions(path, query, { nested_namespaces = true })
   return tree
 end
 
 DotnetNeotestAdapter.build_spec = function(args)
   local position = args.tree:data()
-  local results_path = async.fn.tempname()
+  local results_path = async.fn.tempname() .. ".trx"
   local fqn
   for segment in string.gmatch(position.id, "([^::]+)") do
     if not string.find(segment, ".cs$") then
-      put(segment)
       fqn = fqn and fqn .. "." .. segment or segment
     end
   end
 
-  put("FQN = ")
-  put(fqn)
+  local project_dir = DotnetNeotestAdapter.root(position.path)
+
   -- This returns the directory of the .csproj or .fsproj file. The dotnet command works with the directory name, rather
   -- than the full path to the file.
-  local test_input = DotnetNeotestAdapter.root(position.path)
+  local test_root = project_dir
 
   local filter = ""
-  if position.type == "dir" then
-    test_input = vim.fn.fnamemodify(position.path, ":p:h")
-  end
-  if position.type == "file" then
-    filter = '--filter "FullyQualifiedName~' .. vim.fn.fnamemodify(position.name, ":r") .. '"'
-  end
   if position.type == "namespace" then
     filter = '--filter "FullyQualifiedName~' .. fqn .. '"'
   end
@@ -110,27 +60,42 @@ DotnetNeotestAdapter.build_spec = function(args)
     filter = '--filter "FullyQualifiedName=' .. fqn .. '"'
   end
 
-  -- Logs files to standard output of a trx file in the 'TestResults' directory at the project root
   local command = {
     "dotnet",
     "test",
-    test_input,
+    test_root,
     filter,
+    "-r",
+    vim.fn.fnamemodify(results_path, ":h"),
     "--logger",
-    '"console;verbosity=detailed"',
+    '"trx;logfilename=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
   }
 
   local command_string = table.concat(command, " ")
 
-  put(command_string)
   return {
     command = command_string,
     context = {
-      pos_id = position.id,
       results_path = results_path,
       file = position.path,
     },
   }
+end
+
+local function get_test_nodes_data(tree)
+  local test_nodes = {}
+  for _, node in tree:iter_nodes() do
+    if node:data().type == "test" then
+      local test_node = {
+        name = node:data().name,
+        path = node:data().path,
+        id = node:data().id,
+      }
+      table.insert(test_nodes, test_node)
+    end
+  end
+
+  return test_nodes
 end
 
 local function remove_bom(str)
@@ -146,28 +111,22 @@ end
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, result, tree)
-  -- From luarocks module
-
-  local success, xml = pcall(lib.files.read, result.output)
+  local output_file = spec.context.results_path
+  local success, xml = pcall(lib.files.read, output_file)
 
   if not success then
     logger.error("No test output file found ")
     return {}
   end
 
-  if success then
-    put(xml)
-    return {}
-  end
+  local no_bom_xml = remove_bom(xml)
 
-  -- local no_bom_xml = remove_bom(xml)
   local ok, parsed_data = pcall(lib.xml.parse, no_bom_xml)
   if not ok then
     logger.error("Failed to parse test output:", output_file)
     return {}
   end
 
-  local neotest_results = {}
   local test_results = parsed_data.TestRun.Results
 
   if #test_results.UnitTestResult > 1 then
@@ -178,49 +137,10 @@ DotnetNeotestAdapter.results = function(spec, result, tree)
     return {}
   end
 
-  local file_result = { status = "passed", errors = {} }
-  for _, value in pairs(test_results) do
-    if value._attr.testName ~= nil then
-      local outcome = value._attr.outcome
-      local pos_id = spec.context.file_path .. "::" .. value._attr.testName
-      neotest_results[pos_id] = {
-        status = string.lower(outcome),
-        short = value._attr.testName .. ":" .. value._attr.outcome,
-        -- output = value.Output and value.Output.StdOut or "Passed",
-        errors = {},
-      }
-
-      if outcome == "Failed" then
-        local failure_message = value.Output.ErrorInfo.Message
-          .. "\n"
-          .. value.Output.ErrorInfo.StackTrace
-        -- neotest_results[pos_id].output = failure_message
-        table.insert(neotest_results[pos_id].errors, {
-          message = failure_message,
-        })
-
-        -- There is a failure, so set the overall file result status to failed and add errors
-        file_result.status = "failed"
-        vim.list_extend(file_result.errors, neotest_results[pos_id].errors)
-      end
-    end
-  end
-
-  neotest_results[spec.context.file_path] = file_result
-
-  local function get_namespace_results(node)
-    for parent in node:iter_parents() do
-      if parent:data().type ~= "namespace" then
-        neotest_results[parent:data().id] = file_result
-      end
-    end
-  end
-
-  for _, node in tree:iter_nodes() do
-    if node:data().type == "test" then
-      get_namespace_results(node)
-    end
-  end
+  local test_nodes = get_test_nodes_data(tree)
+  local intermediate_results = result_utils.create_intermediate_results(test_results)
+  local neotest_results =
+    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
   return neotest_results
 end
