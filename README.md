@@ -2,6 +2,10 @@
 
 Neotest adapter for dotnet tests
 
+**NOTE - This is a WIP project and will be under development over the coming months with additional features**
+
+- _Please feel free to open an issue_
+
 # Pre-requisites
 
 neotest-dotnet requires makes a number of assumptions about your environment:
