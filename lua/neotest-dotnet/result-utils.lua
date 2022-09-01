@@ -1,101 +1,29 @@
-local logger = require("neotest.logging")
-local async = require("neotest.async")
-
 local result_utils = {}
-local highlight_indicator = "\27[39;49m\27"
-local escaped_highlight_indicator = "\27%[39%;49m\27"
-local highlight_reset_matcher = "\27%[39%;49m"
-
-local failure_indicator = highlight_indicator .. "[91m  Failed"
-local failure_highlight_escaped = escaped_highlight_indicator .. "%[91m"
-local failure_highlight = highlight_indicator .. "[91m"
-
-local pass_indicator = highlight_indicator .. "[92m  Passed"
-local pass_highlight_escaped = escaped_highlight_indicator .. "%[92m"
-local pass_highlight = highlight_indicator .. "[92m"
-
-local skipped_indicator = highlight_indicator .. "[93m  Skipped"
-local skipped_highlight_escaped = escaped_highlight_indicator .. "%[93m"
-local skipped_highlight = highlight_indicator .. "[93m"
 
 ---@class DotnetResult
 ---@field status string
 ---@field raw_output string
 ---@field test_name string
+---@field error_info string
 
-local function to_cr_lines(raw)
-  return raw:gsub("\r", ""):gmatch("(.-)\n")
-end
-
-local function check_for_test_line(line)
-  local status = nil
-  local indicator = nil
-
-  if string.find(line, failure_indicator, 1, true) then
-    status = "failed"
-    indicator = failure_highlight
-  end
-  if string.find(line, pass_indicator, 1, true) then
-    status = "passed"
-    indicator = pass_highlight
-  end
-  if string.find(line, skipped_indicator, 1, true) then
-    status = "skipped"
-    indicator = skipped_highlight
-  end
-
-  return status, indicator
-end
-
-function result_utils.marshal_dotnet_console_output(raw)
-  local output = to_cr_lines(raw)
-
-  ---@type DotnetResult[]
+function result_utils.create_intermediate_results(test_results)
   local intermediate_results = {}
-  local current_status = nil
-  local current_indicator = nil
-  local current_output = ""
-  local current_test_name = nil
-
-  for line in output do
-    if not current_status then
-      current_status, current_indicator = check_for_test_line(line)
-
-      if current_status then
-        local _, end_idx = string.find(line, current_indicator, 0, true)
-        current_test_name = string.match(line, highlight_reset_matcher .. "([^%s]+)", end_idx)
-        current_output = current_output .. line
-      end
-    else
-      if string.find(line, current_indicator, 1, true) then
-        current_output = current_output .. line
-      else
-        local result = {
-          status = current_status,
-          raw_output = current_output,
-          test_name = current_test_name,
-        }
-        table.insert(intermediate_results, result)
-
-        -- Check the line again. We may be at the beginning of the next test output
-        current_status, current_indicator = check_for_test_line(line)
-
-        if current_status then
-          local _, end_idx = string.find(line, current_indicator, 0, true)
-          current_test_name = string.match(line, "\27%[39%;49m([^%s]+)", end_idx)
-          current_output = line
-        else
-          -- Reset the current result to collect the next one
-          current_status = nil
-          current_indicator = nil
-          current_output = ""
-          current_test_name = nil
-        end
-      end
+  for _, value in pairs(test_results) do
+    if value._attr.testName ~= nil then
+      local outcome = value._attr.outcome
+      local has_errors = value.Output and value.Output.ErrorInfo or nil
+      local intermediate_result = {
+        status = string.lower(outcome),
+        raw_output = value.Output and value.Output.StdOut or outcome,
+        test_name = value._attr.testName,
+        error_info = has_errors
+            and value.Output.ErrorInfo.Message .. "\n" .. value.Output.ErrorInfo.StackTrace
+          or nil,
+      }
+      table.insert(intermediate_results, intermediate_result)
     end
   end
 
-  put(intermediate_results)
   return intermediate_results
 end
 
@@ -106,30 +34,21 @@ end
 function result_utils.convert_intermediate_results(intermediate_results, test_nodes)
   local neotest_results = {}
 
-  for _, result in ipairs(intermediate_results) do
+  for _, intermediate_result in ipairs(intermediate_results) do
     for _, node in ipairs(test_nodes) do
-      if result.test_name == node.name then
-        local sanitized_output = result.raw_output
-          :gsub(failure_highlight_escaped, "")
-          :gsub(pass_highlight_escaped, "")
-          :gsub(skipped_highlight_escaped, "")
-          :gsub(escaped_highlight_indicator, "")
-          :gsub(highlight_reset_matcher, "")
-
-        local fname = async.fn.tempname()
-        async.fn.writefile({ result.raw_output }, fname)
+      if intermediate_result.test_name == node.name then
         neotest_results[node.id] = {
-          status = result.status,
-          short = node.name .. ":Passed",
-          output = fname,
+          status = intermediate_result.status,
+          short = node.name .. ":" .. intermediate_result.status,
           errors = {},
         }
 
-        if result.status == "failed" then
+        if intermediate_result.error_info then
           table.insert(neotest_results[node.id].errors, {
-            message = sanitized_output,
+            message = intermediate_result.error_info,
           })
         end
+
         break
       end
     end

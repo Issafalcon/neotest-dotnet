@@ -1,11 +1,10 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
 local async = require("neotest.async")
-local Path = require("plenary.path")
-local Tree = require("neotest.types").Tree
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
-local parser = require("neotest-dotnet.parser")
 local result_utils = require("neotest-dotnet.result-utils")
+local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
+local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
@@ -32,57 +31,14 @@ DotnetNeotestAdapter.discover_positions = function(path)
         name: (qualified_name) @namespace.name
     ) @namespace.definition
 
-    ;; Matches `[TestClass]`
-    (class_declaration
-      (attribute_list
-        (attribute
-          name: (identifier) @attribute_name (#any-of? @attribute_name "TestClass" "TestFixture")
-        )
-      )
-      name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches SpecFlow generated classes
-    (class_declaration
-      (attribute_list
-        (attribute 
-          (attribute_argument_list
-            (attribute_argument
-              (string_literal) @attribute_argument (#match? @attribute_argument "SpecFlow\"$")
-            )
-          )
-        )
-      ) 
-      name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; --Test
-    ;; Matches `[TestMethod]`
-    (method_declaration
-      (attribute_list
-        (attribute
-          name: (identifier) @attribute_name (#any-of? @attribute_name "TestMethod" "Test" "TestCase" "Fact" "Theory")
-        )
-      )
-      name: (identifier) @test.name
-    ) @test.definition
-
-    (method_declaration
-      (attribute_list
-        (attribute
-          name: (qualified_name) @attribute_name (#match? @attribute_name "SkippableFactAttribute$")
-        )
-      )
-      name: (identifier) @test.name
-    ) @test.definition
-  ]]
+  ]] .. unit_test_queries .. specflow_queries
   local tree = lib.treesitter.parse_positions(path, query, { nested_namespaces = true })
   return tree
 end
 
 DotnetNeotestAdapter.build_spec = function(args)
   local position = args.tree:data()
-  local results_path = async.fn.tempname()
+  local results_path = async.fn.tempname() .. ".trx"
   local fqn
   for segment in string.gmatch(position.id, "([^::]+)") do
     if not string.find(segment, ".cs$") then
@@ -104,23 +60,22 @@ DotnetNeotestAdapter.build_spec = function(args)
     filter = '--filter "FullyQualifiedName=' .. fqn .. '"'
   end
 
-  -- Logs files to standard output of a trx file in the 'TestResults' directory at the project root
   local command = {
     "dotnet",
     "test",
     test_root,
     filter,
+    "-r",
+    vim.fn.fnamemodify(results_path, ":h"),
     "--logger",
-    '"console;verbosity=detailed"',
+    '"trx;logfilename=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
   }
 
   local command_string = table.concat(command, " ")
 
-  put(command_string)
   return {
     command = command_string,
     context = {
-      pos_id = position.id,
       results_path = results_path,
       file = position.path,
     },
@@ -143,21 +98,47 @@ local function get_test_nodes_data(tree)
   return test_nodes
 end
 
+local function remove_bom(str)
+  if string.byte(str, 1) == 239 and string.byte(str, 2) == 187 and string.byte(str, 3) == 191 then
+    str = string.sub(str, 4)
+  end
+  return str
+end
+
 ---@async
 ---@param spec neotest.RunSpec
 ---@param b neotest.StrategyResult
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
-DotnetNeotestAdapter.results = function(_, result, tree)
-  local success, results = pcall(lib.files.read, result.output)
+DotnetNeotestAdapter.results = function(spec, result, tree)
+  local output_file = spec.context.results_path
+  local success, xml = pcall(lib.files.read, output_file)
 
   if not success then
     logger.error("No test output file found ")
     return {}
   end
 
+  local no_bom_xml = remove_bom(xml)
+
+  local ok, parsed_data = pcall(lib.xml.parse, no_bom_xml)
+  if not ok then
+    logger.error("Failed to parse test output:", output_file)
+    return {}
+  end
+
+  local test_results = parsed_data.TestRun.Results
+
+  if #test_results.UnitTestResult > 1 then
+    test_results = test_results.UnitTestResult
+  end
+
+  if not test_results then
+    return {}
+  end
+
   local test_nodes = get_test_nodes_data(tree)
-  local intermediate_results = result_utils.marshal_dotnet_console_output(results)
+  local intermediate_results = result_utils.create_intermediate_results(test_results)
   local neotest_results =
     result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
