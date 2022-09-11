@@ -41,8 +41,10 @@ DotnetNeotestAdapter.build_spec = function(args)
   local results_path = async.fn.tempname() .. ".trx"
   local fqn
   for segment in string.gmatch(position.id, "([^::]+)") do
-    if not string.find(segment, ".cs$") then
-      fqn = fqn and fqn .. "." .. segment or segment
+    if not (vim.fn.has("win32") and segment == "C") then
+      if not string.find(segment, ".cs$") then
+        fqn = fqn and fqn .. "." .. segment or segment
+      end
     end
   end
 
@@ -140,7 +142,7 @@ DotnetNeotestAdapter.results = function(spec, result, tree)
   local test_nodes = get_test_nodes_data(tree)
   local intermediate_results = result_utils.create_intermediate_results(test_results)
   local neotest_results =
-    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+  result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
   return neotest_results
 end
