@@ -31,7 +31,10 @@ neotest-dotnet requires makes a number of assumptions about your environment:
 
 ## [vim-plug](https://github.com/junegunn/vim-plug)
 
-TODO
+```vim
+    Plug 'https://github.com/nvim-neotest/neotest'
+    Plug 'https://github.com/Issafalcon/neotest-dotnet'
+```
 
 # Support
 
