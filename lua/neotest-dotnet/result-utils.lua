@@ -1,13 +1,29 @@
 local result_utils = {}
 
----@class DotnetResult
+---@class DotnetResult[]
 ---@field status string
 ---@field raw_output string
 ---@field test_name string
 ---@field error_info string
 
+function result_utils.get_runtime_error(parsed_data, position_id)
+    local run_info = parsed_data.TestRun.ResultSummary.RunInfos
+    local run_outcome = {}
+    if run_info then
+      run_outcome[position_id] = {
+        status = "failed",
+      }
+    end
+    return run_outcome
+end
+
+---Creates a table of intermediate results from the parsed xml result data
+---@param test_results table
+---@return DotnetResult[]
 function result_utils.create_intermediate_results(test_results)
+  ---@type DotnetResult[]
   local intermediate_results = {}
+
   for _, value in pairs(test_results) do
     if value._attr.testName ~= nil then
       local outcome = value._attr.outcome
