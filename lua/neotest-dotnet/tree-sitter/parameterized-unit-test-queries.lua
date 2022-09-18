@@ -1,3 +1,4 @@
+
 return [[
   ;; Matches test classes
   (class_declaration
@@ -23,11 +24,11 @@ return [[
     )
   )
 
-  ;; Matches test methods
+  ;; Matches parameterized test methods
   (method_declaration
     (attribute_list
       (attribute
-        name: (identifier) @attribute_name (#any-of? @attribute_name "TestMethod" "Test" "TestCase" "Fact")
+        name: (identifier) @attribute_name (#any-of? @attribute_name "Theory" "InlineData")
       )
     )
     name: (identifier) @test.name

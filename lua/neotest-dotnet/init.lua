@@ -6,6 +6,7 @@ local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
 local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
+local parameterized_unit_test_queries = require("neotest-dotnet.tree-sitter.parameterized-unit-test-queries")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
@@ -24,6 +25,23 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
   end
 end
 
+local function get_test_nodes_data(tree)
+  local test_nodes = {}
+  for _, node in tree:iter_nodes() do
+    if node:data().type == "test" then
+      local test_node = {
+        name = node:data().name,
+        path = node:data().path,
+        id = node:data().id,
+        key = node._key
+      }
+      table.insert(test_nodes, test_node)
+    end
+  end
+
+  return test_nodes
+end
+
 DotnetNeotestAdapter.discover_positions = function(path)
   local query = [[
     ;; --Namespaces
@@ -33,7 +51,28 @@ DotnetNeotestAdapter.discover_positions = function(path)
     ) @namespace.definition
 
   ]] .. unit_test_queries .. specflow_queries
+
+  local parameterized_query = [[
+    ;; --Namespaces
+    ;; Matches namespace
+    (namespace_declaration
+        name: (qualified_name) @namespace.name
+    ) @namespace.definition
+
+  ]] .. parameterized_unit_test_queries
+
   local tree = lib.treesitter.parse_positions(path, query, { nested_namespaces = true })
+  local parameterized_tree = lib.treesitter.parse_positions(path, parameterized_query, { nested_namespaces = true })
+
+  local parameterized_test_nodes = get_test_nodes_data(parameterized_tree)
+  if #parameterized_test_nodes > 0 then
+    put("Parameterized test nodes")
+    put(parameterized_test_nodes)
+
+    local code_structure = omnisharp_commands.get_code_structure(path)
+    put("Code structure")
+    put(code_structure)
+  end
   return tree
 end
 
@@ -111,6 +150,7 @@ DotnetNeotestAdapter.results = function(spec, result, tree)
   local output_file = spec.context.results_path
 
   local parsed_data = trx_utils.parse_trx(output_file)
+  put(parsed_data)
   local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
 
   -- No test results. Something went wrong. Check for runtime error
