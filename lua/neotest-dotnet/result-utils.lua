@@ -30,15 +30,19 @@ function result_utils.create_intermediate_results(test_results)
 
   for _, value in pairs(test_results) do
     if value._attr.testName ~= nil then
+      local error_info
       local outcome = outcome_mapper[value._attr.outcome]
       local has_errors = value.Output and value.Output.ErrorInfo or nil
+
+      if has_errors and outcome == 'failed' then
+        local stackTrace = value.Output.ErrorInfo.StackTrace or ""
+        error_info = value.Output.ErrorInfo.Message .. "\n" .. stackTrace
+      end
       local intermediate_result = {
         status = string.lower(outcome),
         raw_output = value.Output and value.Output.StdOut or outcome,
         test_name = value._attr.testName,
-        error_info = has_errors
-            and value.Output.ErrorInfo.Message .. "\n" .. value.Output.ErrorInfo.StackTrace
-          or nil,
+        error_info = error_info,
       }
       table.insert(intermediate_results, intermediate_result)
     end
