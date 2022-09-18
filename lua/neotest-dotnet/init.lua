@@ -3,6 +3,7 @@ local logger = require("neotest.logging")
 local async = require("neotest.async")
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
+local trx_utils = require("neotest-dotnet.trx-utils")
 local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
 local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
 
@@ -80,6 +81,7 @@ DotnetNeotestAdapter.build_spec = function(args)
     context = {
       results_path = results_path,
       file = position.path,
+      id = position.id,
     },
   }
 end
@@ -100,49 +102,30 @@ local function get_test_nodes_data(tree)
   return test_nodes
 end
 
-local function remove_bom(str)
-  if string.byte(str, 1) == 239 and string.byte(str, 2) == 187 and string.byte(str, 3) == 191 then
-    str = string.sub(str, 4)
-  end
-  return str
-end
-
 ---@async
 ---@param spec neotest.RunSpec
----@param b neotest.StrategyResult
+---@param result neotest.StrategyResult
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, result, tree)
   local output_file = spec.context.results_path
-  local success, xml = pcall(lib.files.read, output_file)
 
-  if not success then
-    logger.error("No test output file found ")
-    return {}
+  local parsed_data = trx_utils.parse_trx(output_file)
+  local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+
+  -- No test results. Something went wrong. Check for runtime error
+  if not test_results then
+    return result_utils.get_runtime_error(spec.context.id)
   end
-
-  local no_bom_xml = remove_bom(xml)
-
-  local ok, parsed_data = pcall(lib.xml.parse, no_bom_xml)
-  if not ok then
-    logger.error("Failed to parse test output:", output_file)
-    return {}
-  end
-
-  local test_results = parsed_data.TestRun.Results
 
   if #test_results.UnitTestResult > 1 then
     test_results = test_results.UnitTestResult
   end
 
-  if not test_results then
-    return {}
-  end
-
   local test_nodes = get_test_nodes_data(tree)
   local intermediate_results = result_utils.create_intermediate_results(test_results)
   local neotest_results =
-  result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
   return neotest_results
 end
