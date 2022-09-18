@@ -111,11 +111,11 @@ DotnetNeotestAdapter.results = function(spec, result, tree)
   local output_file = spec.context.results_path
 
   local parsed_data = trx_utils.parse_trx(output_file)
-  local test_results = parsed_data.TestRun.Results
+  local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
 
   -- No test results. Something went wrong. Check for runtime error
   if not test_results then
-    return result_utils.get_runtime_error(parsed_data, spec.context.id)
+    return result_utils.get_runtime_error(spec.context.id)
   end
 
   if #test_results.UnitTestResult > 1 then

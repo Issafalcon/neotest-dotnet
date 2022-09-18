@@ -6,15 +6,19 @@ local result_utils = {}
 ---@field test_name string
 ---@field error_info string
 
-function result_utils.get_runtime_error(parsed_data, position_id)
-    local run_info = parsed_data.TestRun.ResultSummary.RunInfos
-    local run_outcome = {}
-    if run_info then
-      run_outcome[position_id] = {
-        status = "failed",
-      }
-    end
-    return run_outcome
+local outcome_mapper = {
+  Passed = "passed",
+  Failed = "failed",
+  Skipped = "skipped",
+  NotExecuted = "skipped",
+}
+
+function result_utils.get_runtime_error(position_id)
+  local run_outcome = {}
+  run_outcome[position_id] = {
+    status = "failed",
+  }
+  return run_outcome
 end
 
 ---Creates a table of intermediate results from the parsed xml result data
@@ -26,7 +30,7 @@ function result_utils.create_intermediate_results(test_results)
 
   for _, value in pairs(test_results) do
     if value._attr.testName ~= nil then
-      local outcome = value._attr.outcome
+      local outcome = outcome_mapper[value._attr.outcome]
       local has_errors = value.Output and value.Output.ErrorInfo or nil
       local intermediate_result = {
         status = string.lower(outcome),

@@ -1,4 +1,5 @@
 local lib = require("neotest.lib")
+local logger = require("neotest.logging")
 
 local trx_utils = {}
 
