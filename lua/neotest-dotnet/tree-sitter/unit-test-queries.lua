@@ -9,20 +9,6 @@ return [[
     name: (identifier) @namespace.name
   ) @namespace.definition
 
-  ;; Matches XUnit test class (has no specific attributes on class)
-  (
-    (using_directive
-      (identifier) @package_name (#eq? @package_name "Xunit")
-    )
-    (namespace_declaration
-      body: (declaration_list
-        (class_declaration
-          name: (identifier) @namespace.name
-        ) @namespace.definition
-      )
-    )
-  )
-
   ;; Matches test methods
   (method_declaration
     (attribute_list
