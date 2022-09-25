@@ -60,15 +60,18 @@ function result_utils.convert_intermediate_results(intermediate_results, test_no
 
   for _, intermediate_result in ipairs(intermediate_results) do
     for _, node in ipairs(test_nodes) do
-      if intermediate_result.test_name == node.name then
-        neotest_results[node.id] = {
+      local node_data = node:data()
+      -- The test name from the trx file uses the namespace to fully qualify the test name
+      -- To simplify the comparison, it's good enough to just ensure that the last part of the test_name matches the node name (the unqualified display name of the test)
+      if string.find(intermediate_result.test_name, node_data.name, -(#node_data.name), true) then
+        neotest_results[node_data.id] = {
           status = intermediate_result.status,
-          short = node.name .. ":" .. intermediate_result.status,
+          short = node_data.name .. ":" .. intermediate_result.status,
           errors = {},
         }
 
         if intermediate_result.error_info then
-          table.insert(neotest_results[node.id].errors, {
+          table.insert(neotest_results[node_data.id].errors, {
             message = intermediate_result.error_info,
           })
         end
