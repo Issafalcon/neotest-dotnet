@@ -50,9 +50,17 @@ neotest-dotnet requires makes a number of assumptions about your environment:
 
 | Runner / Framework | Unit Tests         | Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow           |
 | ------------------ | ------------------ | ---------------------------------------------------------- | ------------------ |
-| C# - NUnit         | :heavy_check_mark: | :part_alternation_mark:                                    | :heavy_check_mark: |
-| C# - XUnit         | :heavy_check_mark: | :part_alternation_mark:                                    | :heavy_check_mark: |
-| C# - MSTest        | :heavy_check_mark: | :part_alternation_mark:                                    | :interrobang:      |
+| C# - NUnit         | :heavy_check_mark:\* | :x:                                    | :heavy_check_mark: |
+| C# - XUnit         | :heavy_check_mark:\* | :heavy_check_mark:                                    | :heavy_check_mark: |
+| C# - MSTest        | :heavy_check_mark:\* | :x:                                    | :interrobang:      |
 | F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      |
 | F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      |
 | F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:      |
+
+\* File-scoped namespace syntax in C# 10 is not yet supported (will be in a future fix)
+
+# Limitations
+
+1. A tradeoff was made between being able to run parameterized tests and the specificity of the `dotnet --filter` command options. A more lenient 'contains' type filter is used
+in order for the adapter to be able to work with parameterized tests. Unfortunately, no amount of formatting would support specific `FullyQualifiedName` filters for the dotnet test command for parameterized tests.
+2. See the support guidance for feature and language support (regular users of F# needed!)

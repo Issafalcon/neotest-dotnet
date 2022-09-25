@@ -1,13 +1,22 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
+local Tree = require("neotest.types").Tree
 local async = require("neotest.async")
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
-local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
-local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
+local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
+
+---@class ParameterizedTestMethod
+---@field name string
+---@field range table
+---@field parameters string
+
+---@class ParameterizedTestCase
+---@field range table
+---@field arguments string
 
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
@@ -24,7 +33,78 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
   end
 end
 
+local function get_test_nodes_data(tree)
+  local test_nodes = {}
+  for _, node in tree:iter_nodes() do
+    if node:data().type == "test" then
+      table.insert(test_nodes, node)
+    end
+  end
+
+  return test_nodes
+end
+
+---Similar to the core neotest function, but simplified to replace test level nodes
+---@param tree neotest.Tree
+---@param node neotest.Tree
+local function replace_node(tree, node)
+  local existing = tree:get_key(node:data().id)
+  if not existing then
+    logger.error("Could not find node to replace", node:data())
+  end
+
+  -- Find parent node and replace child reference
+  local parent = existing:parent()
+  if not parent then
+    -- If there is no parent, then the tree describes the same position as node,
+    -- and is replaced in its entirety
+    tree._children = node._children
+    tree._nodes = node._nodes
+    tree._data = node._data
+    return
+  end
+
+  for i, child in pairs(parent._children) do
+    if node:data().id == child:data().id then
+      parent._children[i] = node
+      break
+    end
+  end
+  node._parent = parent
+
+  -- Remove node and all descendants
+  for _, pos in existing:iter() do
+    tree._nodes[pos.id] = nil
+  end
+
+  -- Replace nodes map in new node and descendants
+  for _, n in node:iter_nodes() do
+    tree._nodes[n:data().id] = n
+    n._nodes = tree._nodes
+  end
+end
+
+---Implementation of core neotest function.
+---@param path any
+---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
+  ---@type table<string, ParameterizedTestMethod>
+  local parameterized_test_methods = {}
+  ---@type ParameterizedTestCase[]
+  local parameterized_test_cases = {}
+
+  local function custom_build_position(file_path, source, captured_nodes)
+    -- TODO: Implement strategy pattern for different test frameworks
+    -- using omnisharp to determine the test runner being used
+    return xunit_utils.build_position(
+      file_path,
+      source,
+      captured_nodes,
+      parameterized_test_methods,
+      parameterized_test_cases
+    )
+  end
+
   local query = [[
     ;; --Namespaces
     ;; Matches namespace
@@ -32,8 +112,28 @@ DotnetNeotestAdapter.discover_positions = function(path)
         name: (qualified_name) @namespace.name
     ) @namespace.definition
 
-  ]] .. unit_test_queries .. specflow_queries
-  local tree = lib.treesitter.parse_positions(path, query, { nested_namespaces = true })
+  ]] .. xunit_utils.get_treesitter_test_query()
+
+  local tree = lib.treesitter.parse_positions(path, query, {
+    nested_namespaces = true,
+    nested_tests = true,
+    build_position = custom_build_position,
+  })
+
+  local replacement_nodes =
+  xunit_utils.create_replacement_parameterized_test_node(
+    parameterized_test_methods,
+    parameterized_test_cases,
+    get_test_nodes_data(tree)
+  )
+
+  for _, node_replacement in ipairs(replacement_nodes) do
+    local new_node = Tree.from_list(node_replacement.new_node, function(pos)
+      return pos.id
+    end)
+    replace_node(tree, new_node)
+  end
+
   return tree
 end
 
@@ -41,9 +141,13 @@ DotnetNeotestAdapter.build_spec = function(args)
   local position = args.tree:data()
   local results_path = async.fn.tempname() .. ".trx"
   local fqn
-  for segment in string.gmatch(position.id, "([^::]+)") do
+  local segments = vim.split(position.id, "::")
+  for _, segment in ipairs(segments) do
     if not (vim.fn.has("win32") and segment == "C") then
       if not string.find(segment, ".cs$") then
+
+        -- Remove any test parameters as these don't work well with the dotnet filter formatting.
+        segment = segment:gsub('%b()', '')
         fqn = fqn and fqn .. "." .. segment or segment
       end
     end
@@ -57,10 +161,13 @@ DotnetNeotestAdapter.build_spec = function(args)
 
   local filter = ""
   if position.type == "namespace" then
-    filter = '--filter "FullyQualifiedName~' .. fqn .. '"'
+    filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
   end
   if position.type == "test" then
-    filter = '--filter "FullyQualifiedName=' .. fqn .. '"'
+    -- Allow a more lenient 'contains' match for the filter, accepting tradeoff that it may
+    -- also run tests with similar names. This allows us to run parameterized tests individually
+    -- or as a group.
+    filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
   end
 
   local command = {
@@ -86,28 +193,12 @@ DotnetNeotestAdapter.build_spec = function(args)
   }
 end
 
-local function get_test_nodes_data(tree)
-  local test_nodes = {}
-  for _, node in tree:iter_nodes() do
-    if node:data().type == "test" then
-      local test_node = {
-        name = node:data().name,
-        path = node:data().path,
-        id = node:data().id,
-      }
-      table.insert(test_nodes, test_node)
-    end
-  end
-
-  return test_nodes
-end
-
 ---@async
 ---@param spec neotest.RunSpec
----@param result neotest.StrategyResult
+---@param _ neotest.StrategyResult
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
-DotnetNeotestAdapter.results = function(spec, result, tree)
+DotnetNeotestAdapter.results = function(spec, _, tree)
   local output_file = spec.context.results_path
 
   local parsed_data = trx_utils.parse_trx(output_file)
@@ -125,7 +216,7 @@ DotnetNeotestAdapter.results = function(spec, result, tree)
   local test_nodes = get_test_nodes_data(tree)
   local intermediate_results = result_utils.create_intermediate_results(test_results)
   local neotest_results =
-    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+  result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
   return neotest_results
 end
