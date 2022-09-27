@@ -63,7 +63,10 @@ function result_utils.convert_intermediate_results(intermediate_results, test_no
       local node_data = node:data()
       -- The test name from the trx file uses the namespace to fully qualify the test name
       -- To simplify the comparison, it's good enough to just ensure that the last part of the test_name matches the node name (the unqualified display name of the test)
-      if string.find(intermediate_result.test_name, node_data.name, -(#node_data.name), true) then
+      local is_match = #intermediate_result.test_name == #node_data.name
+        and string.find(intermediate_result.test_name, node_data.name, 0, true)
+        or string.find(intermediate_result.test_name, node_data.name, -#node_data.name, true)
+      if is_match then
         neotest_results[node_data.id] = {
           status = intermediate_result.status,
           short = node_data.name .. ":" .. intermediate_result.status,

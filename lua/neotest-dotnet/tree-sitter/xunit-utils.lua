@@ -34,13 +34,44 @@ M.get_treesitter_test_query = function()
       (using_directive
         (identifier) @package_name (#eq? @package_name "Xunit")
       )
-      (namespace_declaration
-        body: (declaration_list
+      [
+        (namespace_declaration
+          body: (declaration_list
+            (class_declaration
+              name: (identifier) @namespace.name
+            ) @namespace.definition
+          )
+        )
+        (file_scoped_namespace_declaration
           (class_declaration
             name: (identifier) @namespace.name
           ) @namespace.definition
         )
-      )
+      ]
+    )
+
+    ;; Matches Xunit test class where using statement under namespace
+    (
+      [
+        (namespace_declaration
+          body: (declaration_list
+            (using_directive
+              (identifier) @package_name (#eq? @package_name "Xunit")
+            )
+            (class_declaration
+              name: (identifier) @namespace.name
+            ) @namespace.definition
+          )
+        )
+        (file_scoped_namespace_declaration
+          (using_directive
+            (identifier) @package_name (#eq? @package_name "Xunit")
+          )
+          (class_declaration
+            name: (identifier) @namespace.name
+          ) @namespace.definition
+        )
+      ]
     )
 
     ;; Matches parameterized test methods

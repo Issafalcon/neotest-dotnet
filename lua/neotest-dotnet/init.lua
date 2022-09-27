@@ -112,6 +112,10 @@ DotnetNeotestAdapter.discover_positions = function(path)
         name: (qualified_name) @namespace.name
     ) @namespace.definition
 
+    ;; Matches file-scoped namespaces
+    (file_scoped_namespace_declaration
+        name: (qualified_name) @namespace.name
+    ) @namespace.definition
   ]] .. xunit_utils.get_treesitter_test_query()
 
   local tree = lib.treesitter.parse_positions(path, query, {
