@@ -50,14 +50,13 @@ neotest-dotnet requires makes a number of assumptions about your environment:
 
 | Runner / Framework | Unit Tests         | Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow           |
 | ------------------ | ------------------ | ---------------------------------------------------------- | ------------------ |
-| C# - NUnit         | :heavy_check_mark:\* | :x:                                    | :heavy_check_mark: |
-| C# - XUnit         | :heavy_check_mark:\* | :heavy_check_mark:                                    | :heavy_check_mark: |
-| C# - MSTest        | :heavy_check_mark:\* | :x:                                    | :interrobang:      |
+| C# - NUnit         | :heavy_check_mark: | :x:                                    | :heavy_check_mark: |
+| C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                    | :heavy_check_mark: |
+| C# - MSTest        | :heavy_check_mark: | :x:                                    | :interrobang:      |
 | F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      |
 | F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      |
 | F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:      |
 
-\* File-scoped namespace syntax in C# 10 is not yet supported (will be in a future fix)
 
 # Limitations
 
