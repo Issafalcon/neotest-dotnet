@@ -1,6 +1,5 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local Tree = require("neotest.types").Tree
 local async = require("neotest.async")
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
@@ -84,27 +83,16 @@ local function replace_node(tree, node)
   end
 end
 
+DotnetNeotestAdapter._build_position = function(...)
+  -- TODO: Implement strategy pattern for different test frameworks
+  -- using omnisharp to determine the test runner being used
+  return xunit_utils.build_position(...)
+end
+
 ---Implementation of core neotest function.
 ---@param path any
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
-  ---@type table<string, ParameterizedTestMethod>
-  local parameterized_test_methods = {}
-  ---@type ParameterizedTestCase[]
-  local parameterized_test_cases = {}
-
-  local function custom_build_position(file_path, source, captured_nodes)
-    -- TODO: Implement strategy pattern for different test frameworks
-    -- using omnisharp to determine the test runner being used
-    return xunit_utils.build_position(
-      file_path,
-      source,
-      captured_nodes,
-      parameterized_test_methods,
-      parameterized_test_cases
-    )
-  end
-
   local query = [[
     ;; --Namespaces
     ;; Matches namespace
@@ -118,27 +106,11 @@ DotnetNeotestAdapter.discover_positions = function(path)
     ) @namespace.definition
   ]] .. xunit_utils.get_treesitter_test_query()
 
-  local tree = lib.treesitter.parse_positions(path, query, {
+  return lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,
     nested_tests = true,
-    build_position = custom_build_position,
+    build_position = "require('neotest-dotnet')._build_position",
   })
-
-  local replacement_nodes =
-  xunit_utils.create_replacement_parameterized_test_node(
-    parameterized_test_methods,
-    parameterized_test_cases,
-    get_test_nodes_data(tree)
-  )
-
-  for _, node_replacement in ipairs(replacement_nodes) do
-    local new_node = Tree.from_list(node_replacement.new_node, function(pos)
-      return pos.id
-    end)
-    replace_node(tree, new_node)
-  end
-
-  return tree
 end
 
 DotnetNeotestAdapter.build_spec = function(args)
