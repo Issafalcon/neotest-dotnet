@@ -89,6 +89,10 @@ DotnetNeotestAdapter._build_position = function(...)
   return xunit_utils.build_position(...)
 end
 
+DotnetNeotestAdapter._position_id = function(...)
+  return xunit_utils.position_id(...)
+end
+
 ---Implementation of core neotest function.
 ---@param path any
 ---@return neotest.Tree
@@ -106,11 +110,15 @@ DotnetNeotestAdapter.discover_positions = function(path)
     ) @namespace.definition
   ]] .. xunit_utils.get_treesitter_test_query()
 
-  return lib.treesitter.parse_positions(path, query, {
+  local tree =  lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,
     nested_tests = true,
     build_position = "require('neotest-dotnet')._build_position",
+    position_id = "require('neotest-dotnet')._position_id"
   })
+
+  put(tree)
+  return tree
 end
 
 DotnetNeotestAdapter.build_spec = function(args)

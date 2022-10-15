@@ -76,6 +76,37 @@ local function get_match_type(captured_nodes)
   end
 end
 
+M.position_id = function(position, parents)
+  local original_id = table.concat(
+    vim.tbl_flatten({
+      position.path,
+      vim.tbl_map(function(pos)
+        return pos.name
+      end, parents),
+      position.name,
+    }),
+    "::"
+  )
+
+  -- Check to see if the position is a test case and contains parentheses (meaning it is parameterized)
+  -- If it is, remove the duplicated parent test name from the ID, so that when reading the trx test name
+  -- it will be the same as the test name in the test explorer
+  -- Example:
+  --  When ID is "/path/to/test_file.cs::TestNamespace::TestClassName::ParentTestName::ParentTestName(TestName)"
+  --  Then we need it to be converted to "/path/to/test_file.cs::TestNamespace::TestClassName::ParentTestName(TestName)"
+  if position.type == "test" and position.name:find("%(") then
+    local id_segments = {}
+    for segment in string.gmatch(original_id, "([^::]+)") do
+      table.insert(id_segments, segment)
+    end
+
+    table.remove(id_segments, #id_segments - 1)
+    return table.concat(id_segments, "::")
+  end
+
+  return original_id
+end
+
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
 ---@param file_path any
 ---@param source any
