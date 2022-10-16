@@ -117,7 +117,6 @@ DotnetNeotestAdapter.discover_positions = function(path)
     position_id = "require('neotest-dotnet')._position_id"
   })
 
-  put(tree)
   return tree
 end
 
