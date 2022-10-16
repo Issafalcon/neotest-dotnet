@@ -8,15 +8,6 @@ local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
----@class ParameterizedTestMethod
----@field name string
----@field range table
----@field parameters string
-
----@class ParameterizedTestCase
----@field range table
----@field arguments string
-
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
@@ -41,46 +32,6 @@ local function get_test_nodes_data(tree)
   end
 
   return test_nodes
-end
-
----Similar to the core neotest function, but simplified to replace test level nodes
----@param tree neotest.Tree
----@param node neotest.Tree
-local function replace_node(tree, node)
-  local existing = tree:get_key(node:data().id)
-  if not existing then
-    logger.error("Could not find node to replace", node:data())
-  end
-
-  -- Find parent node and replace child reference
-  local parent = existing:parent()
-  if not parent then
-    -- If there is no parent, then the tree describes the same position as node,
-    -- and is replaced in its entirety
-    tree._children = node._children
-    tree._nodes = node._nodes
-    tree._data = node._data
-    return
-  end
-
-  for i, child in pairs(parent._children) do
-    if node:data().id == child:data().id then
-      parent._children[i] = node
-      break
-    end
-  end
-  node._parent = parent
-
-  -- Remove node and all descendants
-  for _, pos in existing:iter() do
-    tree._nodes[pos.id] = nil
-  end
-
-  -- Replace nodes map in new node and descendants
-  for _, n in node:iter_nodes() do
-    tree._nodes[n:data().id] = n
-    n._nodes = tree._nodes
-  end
 end
 
 DotnetNeotestAdapter._build_position = function(...)

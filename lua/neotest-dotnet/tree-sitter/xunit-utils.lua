@@ -23,6 +23,18 @@ local function argument_string_to_table(arg_string)
   return args
 end
 
+local function get_match_type(captured_nodes)
+  if captured_nodes["test.name"] then
+    return "test"
+  end
+  if captured_nodes["namespace.name"] then
+    return "namespace"
+  end
+  if captured_nodes["test.parameterized.name"] then
+    return "test.parameterized"
+  end
+end
+
 M.test_case_prefix = "TestCase"
 
 M.get_treesitter_test_query = function()
@@ -90,18 +102,6 @@ M.get_treesitter_test_query = function()
       ) @parameter_list
     ) @test.parameterized.definition
   ]]
-end
-
-local function get_match_type(captured_nodes)
-  if captured_nodes["test.name"] then
-    return "test"
-  end
-  if captured_nodes["namespace.name"] then
-    return "namespace"
-  end
-  if captured_nodes["test.parameterized.name"] then
-    return "test.parameterized"
-  end
 end
 
 M.position_id = function(position, parents)

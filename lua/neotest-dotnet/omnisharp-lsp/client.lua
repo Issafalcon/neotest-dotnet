@@ -1,7 +1,7 @@
-local Client = {}
+local M = {}
 local async = require("neotest.async")
 
-function Client.get_omnisharp_client(bufnr)
+function M.get_omnisharp_client(bufnr)
   bufnr = bufnr or 0
   local clients = vim.lsp.buf_get_clients(bufnr)
   for _, client in pairs(clients) do
@@ -13,7 +13,7 @@ function Client.get_omnisharp_client(bufnr)
   print("'omnisharp' lsp client not attached to buffer. Please wait for client to be ready.")
 end
 
-function Client.make_basic_request_params(file_name)
+function M.make_basic_request_params(file_name)
   local pos = vim.lsp.util.make_position_params()
   file_name = file_name or async.fn.expand("%:p")
 
@@ -29,8 +29,8 @@ end
 ---@param params Request parameters
 ---@param callback The callback to invoke with the response from the server
 ---       when its ready. Format is function({err=<error_message>, result=<response>})
-function Client.make_request_async(endpoint, params, callback)
-  local status_ok, lsp_client = pcall(Client.get_omnisharp_client, bufnr)
+function M.make_request_async(endpoint, params, callback)
+  local status_ok, lsp_client = pcall(M.get_omnisharp_client, bufnr)
 
   if not status_ok then
     error("Omnisharp client is not attached. Cannot make request to server")
@@ -46,8 +46,8 @@ function Client.make_request_async(endpoint, params, callback)
   end
 end
 
-function Client.make_request(endpoint, params, bufnr)
-  local status_ok, lsp_client = pcall(Client.get_omnisharp_client, bufnr)
+function M.make_request(endpoint, params, bufnr)
+  local status_ok, lsp_client = pcall(M.get_omnisharp_client, bufnr)
 
   if not status_ok then
     error()
@@ -65,4 +65,4 @@ function Client.make_request(endpoint, params, bufnr)
   end
 end
 
-return Client
+return M

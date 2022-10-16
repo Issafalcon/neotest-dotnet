@@ -1,4 +1,4 @@
-local result_utils = {}
+local M = {}
 
 ---@class DotnetResult[]
 ---@field status string
@@ -13,7 +13,7 @@ local outcome_mapper = {
   NotExecuted = "skipped",
 }
 
-function result_utils.get_runtime_error(position_id)
+function M.get_runtime_error(position_id)
   local run_outcome = {}
   run_outcome[position_id] = {
     status = "failed",
@@ -24,7 +24,7 @@ end
 ---Creates a table of intermediate results from the parsed xml result data
 ---@param test_results table
 ---@return DotnetResult[]
-function result_utils.create_intermediate_results(test_results)
+function M.create_intermediate_results(test_results)
   ---@type DotnetResult[]
   local intermediate_results = {}
 
@@ -55,7 +55,7 @@ end
 ---@param intermediate_results DotnetResult[] The marshalled dotnet console outputs
 ---@param test_nodes neotest.Tree
 ---@return neotest.Result[]
-function result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+function M.convert_intermediate_results(intermediate_results, test_nodes)
   local neotest_results = {}
 
   for _, intermediate_result in ipairs(intermediate_results) do
@@ -87,4 +87,4 @@ function result_utils.convert_intermediate_results(intermediate_results, test_no
   return neotest_results
 end
 
-return result_utils
+return M
