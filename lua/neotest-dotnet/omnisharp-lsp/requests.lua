@@ -1,6 +1,6 @@
 local omnisharp_client = require("neotest-dotnet.omnisharp-lsp.client")
 local async = require("neotest.async")
-local OmnisharpRequests = {}
+local M = {}
 
 local omnisharpEndpoints = {
   reanalyze = "o#/reanalyze",
@@ -103,7 +103,7 @@ end
 ---         }
 ---      }
 ---   }
-function OmnisharpRequests.get_code_structure(file_name)
+function M.get_code_structure(file_name)
   local params = omnisharp_client.make_basic_request_params(file_name)
 
   local response = omnisharp_client.make_request(omnisharpEndpoints.codestructure, params)
@@ -115,8 +115,8 @@ function OmnisharpRequests.get_code_structure(file_name)
   return nil
 end
 
-function OmnisharpRequests.get_tests_in_file(file_name)
-  local code_structure = OmnisharpRequests.get_code_structure(file_name)
+function M.get_tests_in_file(file_name)
+  local code_structure = M.get_code_structure(file_name)
 
   if code_structure ~= nil then
     local tests = find_tests_in_file(code_structure.Elements)
@@ -126,11 +126,11 @@ function OmnisharpRequests.get_tests_in_file(file_name)
   return nil
 end
 
-function OmnisharpRequests.get_project(file_name, bufnr)
+function M.get_project(file_name, bufnr)
   local params = omnisharp_client.make_basic_request_params(file_name)
 
   local response = omnisharp_client.make_request(omnisharpEndpoints.project, params, bufnr)
   return response
 end
 
-return OmnisharpRequests
+return M

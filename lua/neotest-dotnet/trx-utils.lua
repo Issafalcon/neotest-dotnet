@@ -1,7 +1,7 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
 
-local trx_utils = {}
+local M = {}
 
 local function remove_bom(str)
   if string.byte(str, 1) == 239 and string.byte(str, 2) == 187 and string.byte(str, 3) == 191 then
@@ -10,7 +10,7 @@ local function remove_bom(str)
   return str
 end
 
-trx_utils.parse_trx = function (output_file)
+M.parse_trx = function (output_file)
   local success, xml = pcall(lib.files.read, output_file)
 
   if not success then
@@ -29,4 +29,4 @@ trx_utils.parse_trx = function (output_file)
   return parsed_data
 end
 
-return trx_utils
+return M

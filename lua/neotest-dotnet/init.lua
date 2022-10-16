@@ -1,6 +1,5 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local Tree = require("neotest.types").Tree
 local async = require("neotest.async")
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
@@ -8,15 +7,6 @@ local trx_utils = require("neotest-dotnet.trx-utils")
 local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
-
----@class ParameterizedTestMethod
----@field name string
----@field range table
----@field parameters string
-
----@class ParameterizedTestCase
----@field range table
----@field arguments string
 
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
@@ -44,67 +34,20 @@ local function get_test_nodes_data(tree)
   return test_nodes
 end
 
----Similar to the core neotest function, but simplified to replace test level nodes
----@param tree neotest.Tree
----@param node neotest.Tree
-local function replace_node(tree, node)
-  local existing = tree:get_key(node:data().id)
-  if not existing then
-    logger.error("Could not find node to replace", node:data())
-  end
+DotnetNeotestAdapter._build_position = function(...)
+  -- TODO: Implement strategy pattern for different test frameworks
+  -- using omnisharp to determine the test runner being used
+  return xunit_utils.build_position(...)
+end
 
-  -- Find parent node and replace child reference
-  local parent = existing:parent()
-  if not parent then
-    -- If there is no parent, then the tree describes the same position as node,
-    -- and is replaced in its entirety
-    tree._children = node._children
-    tree._nodes = node._nodes
-    tree._data = node._data
-    return
-  end
-
-  for i, child in pairs(parent._children) do
-    if node:data().id == child:data().id then
-      parent._children[i] = node
-      break
-    end
-  end
-  node._parent = parent
-
-  -- Remove node and all descendants
-  for _, pos in existing:iter() do
-    tree._nodes[pos.id] = nil
-  end
-
-  -- Replace nodes map in new node and descendants
-  for _, n in node:iter_nodes() do
-    tree._nodes[n:data().id] = n
-    n._nodes = tree._nodes
-  end
+DotnetNeotestAdapter._position_id = function(...)
+  return xunit_utils.position_id(...)
 end
 
 ---Implementation of core neotest function.
 ---@param path any
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
-  ---@type table<string, ParameterizedTestMethod>
-  local parameterized_test_methods = {}
-  ---@type ParameterizedTestCase[]
-  local parameterized_test_cases = {}
-
-  local function custom_build_position(file_path, source, captured_nodes)
-    -- TODO: Implement strategy pattern for different test frameworks
-    -- using omnisharp to determine the test runner being used
-    return xunit_utils.build_position(
-      file_path,
-      source,
-      captured_nodes,
-      parameterized_test_methods,
-      parameterized_test_cases
-    )
-  end
-
   local query = [[
     ;; --Namespaces
     ;; Matches namespace
@@ -118,25 +61,12 @@ DotnetNeotestAdapter.discover_positions = function(path)
     ) @namespace.definition
   ]] .. xunit_utils.get_treesitter_test_query()
 
-  local tree = lib.treesitter.parse_positions(path, query, {
+  local tree =  lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,
     nested_tests = true,
-    build_position = custom_build_position,
+    build_position = "require('neotest-dotnet')._build_position",
+    position_id = "require('neotest-dotnet')._position_id"
   })
-
-  local replacement_nodes =
-  xunit_utils.create_replacement_parameterized_test_node(
-    parameterized_test_methods,
-    parameterized_test_cases,
-    get_test_nodes_data(tree)
-  )
-
-  for _, node_replacement in ipairs(replacement_nodes) do
-    local new_node = Tree.from_list(node_replacement.new_node, function(pos)
-      return pos.id
-    end)
-    replace_node(tree, new_node)
-  end
 
   return tree
 end
