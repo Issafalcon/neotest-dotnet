@@ -5,8 +5,10 @@ local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
+local dap_utils = require("neotest-dotnet.dap-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
+local dap_args
 
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
@@ -61,11 +63,11 @@ DotnetNeotestAdapter.discover_positions = function(path)
     ) @namespace.definition
   ]] .. xunit_utils.get_treesitter_test_query()
 
-  local tree =  lib.treesitter.parse_positions(path, query, {
+  local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,
     nested_tests = true,
     build_position = "require('neotest-dotnet')._build_position",
-    position_id = "require('neotest-dotnet')._position_id"
+    position_id = "require('neotest-dotnet')._position_id",
   })
 
   return tree
@@ -79,9 +81,8 @@ DotnetNeotestAdapter.build_spec = function(args)
   for _, segment in ipairs(segments) do
     if not (vim.fn.has("win32") and segment == "C") then
       if not string.find(segment, ".cs$") then
-
         -- Remove any test parameters as these don't work well with the dotnet filter formatting.
-        segment = segment:gsub('%b()', '')
+        segment = segment:gsub("%b()", "")
         fqn = fqn and fqn .. "." .. segment or segment
       end
     end
@@ -116,8 +117,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   }
 
   local command_string = table.concat(command, " ")
-
-  return {
+  local spec = {
     command = command_string,
     context = {
       results_path = results_path,
@@ -125,6 +125,17 @@ DotnetNeotestAdapter.build_spec = function(args)
       id = position.id,
     },
   }
+
+  if args.strategy == "dap" then
+    local send_debug_start, await_debug_start = async.control.channel.oneshot()
+    dap_utils.start_debuggable_test(command_string, function(dotnet_test_pid)
+      spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid)
+      send_debug_start()
+    end)
+    await_debug_start()
+  end
+
+  return spec
 end
 
 ---@async
@@ -150,13 +161,16 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
   local test_nodes = get_test_nodes_data(tree)
   local intermediate_results = result_utils.create_intermediate_results(test_results)
   local neotest_results =
-  result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
   return neotest_results
 end
 
 setmetatable(DotnetNeotestAdapter, {
-  __call = function()
+  __call = function(_, opts)
+    if type(opts.dap) == "table" then
+      dap_args = opts.dap
+    end
     return DotnetNeotestAdapter
   end,
 })
