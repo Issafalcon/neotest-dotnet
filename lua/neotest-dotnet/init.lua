@@ -128,10 +128,15 @@ DotnetNeotestAdapter.build_spec = function(args)
 
   if args.strategy == "dap" then
     local send_debug_start, await_debug_start = async.control.channel.oneshot()
+    logger.debug("neotest-dotnet: Running tests in debug mode")
+
     dap_utils.start_debuggable_test(command_string, function(dotnet_test_pid)
-      spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid)
+      spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
+      spec.command = nil
+      logger.debug("neotest-dotnet: Sending debug start")
       send_debug_start()
     end)
+
     await_debug_start()
   end
 
@@ -160,6 +165,7 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
 
   local test_nodes = get_test_nodes_data(tree)
   local intermediate_results = result_utils.create_intermediate_results(test_results)
+
   local neotest_results =
     result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 

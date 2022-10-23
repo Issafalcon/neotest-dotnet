@@ -11,6 +11,7 @@ local function remove_bom(str)
 end
 
 M.parse_trx = function (output_file)
+  logger.info("Parsing trx file: " .. output_file)
   local success, xml = pcall(lib.files.read, output_file)
 
   if not success then
