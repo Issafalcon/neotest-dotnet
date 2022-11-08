@@ -1,0 +1,3 @@
+---@class FrameworkUtils
+---@field test_case_prefix string The prefix to use for paramaterized test case queries
+---@field get_treesitter_test_query function Returns the treesitter query for the framework
