@@ -4,13 +4,11 @@ local async = require("neotest.async")
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
-local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
-local nunit_utils = require("neotest-dotnet.tree-sitter.nunit-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
+local framework_utils = require("neotest-dotnet.test-framework-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
-local framework_utils = {}
 
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
@@ -39,8 +37,6 @@ local function get_test_nodes_data(tree)
 end
 
 DotnetNeotestAdapter._build_position = function(...)
-  -- TODO: Implement strategy pattern for different test frameworks
-  -- using omnisharp to determine the test runner being used
   return framework_utils.build_position(...)
 end
 
@@ -52,12 +48,6 @@ end
 ---@param path any
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
-  -- TODO: Use omnisharp LSP to determine the test runner being used
-  local tests = omnisharp_commands.get_tests_in_file(path)
-  local framework_Name = tests and tests[1].Properties.testFramework or "xunit" -- Assume xunit for now
-  framework_utils = require("neotest-dotnet.tree-sitter." .. framework_Name .. "-utils")
-  fignvim.fn.put(framework_utils)
-
   local query = [[
     ;; --Namespaces
     ;; Matches namespace
@@ -69,7 +59,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
     (file_scoped_namespace_declaration
         name: (qualified_name) @namespace.name
     ) @namespace.definition
-  ]] .. xunit_utils.get_treesitter_test_query()
+  ]] .. framework_utils.get_treesitter_test_query()
 
   local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,
