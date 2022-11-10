@@ -13,7 +13,7 @@ return [[
   (method_declaration
     (attribute_list
       (attribute
-        name: (identifier) @attribute_name (#any-of? @attribute_name "TestMethod" "Test" "TestCase" "Fact")
+        name: (identifier) @attribute_name (#any-of? @attribute_name "TestMethod" "Test" "Fact")
       )
     )
     name: (identifier) @test.name

@@ -1,8 +1,8 @@
 local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
 local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
-local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
-local nunit_utils = require("neotest-dotnet.tree-sitter.nunit-utils")
+local xunit_utils = require("neotest-dotnet.frameworks.xunit-utils")
+local nunit_utils = require("neotest-dotnet.frameworks.nunit-utils")
 local logger = require("neotest.logging")
 
 local M = {}
@@ -16,9 +16,8 @@ local function get_test_framework_utils(path)
     nunit = nunit_utils,
   }
   local tests = omnisharp_commands.get_tests_in_file(path)
-  local framework_Name = tests and tests[1].Properties.testFramework or "xunit" -- Assume xunit for now
-  logger.debug("neotest-dotnet: Test framework detected as being " .. framework_Name)
-  return framework_dictionary[framework_Name]
+  local framework_Name = tests and tests[1].Properties.testFramework
+  return framework_Name and framework_dictionary[framework_Name]
 end
 
 local function get_match_type(captured_nodes)
@@ -32,8 +31,6 @@ local function get_match_type(captured_nodes)
     return "test.parameterized"
   end
 end
-
-M.test_case_prefix = "TestCase"
 
 M.get_treesitter_test_query = function(path)
   local utils = get_test_framework_utils(path)
@@ -79,6 +76,7 @@ end
 ---@return table
 M.build_position = function(file_path, source, captured_nodes)
   local match_type = get_match_type(captured_nodes)
+  logger.debug("File Path:" .. file_path)
   return get_test_framework_utils(file_path).build_position(
     file_path,
     source,

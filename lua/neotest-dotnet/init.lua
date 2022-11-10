@@ -5,7 +5,7 @@ local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
-local framework_utils = require("neotest-dotnet.tree-sitter.test-framework-utils")
+local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
@@ -49,6 +49,7 @@ end
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local framework_query = framework_utils.get_treesitter_test_query(path)
+  fignvim.fn.put(framework_query)
 
   local query = [[
     ;; --Namespaces
