@@ -3,7 +3,6 @@ local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries"
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
 local nunit_utils = require("neotest-dotnet.tree-sitter.nunit-utils")
-local async = require("neotest.async")
 local logger = require("neotest.logging")
 
 local M = {}
@@ -16,12 +15,9 @@ local function get_test_framework_utils(path)
     xunit = xunit_utils,
     nunit = nunit_utils,
   }
-  fignvim.put(framework_dictionary)
-  async.util.scheduler()
   local tests = omnisharp_commands.get_tests_in_file(path)
   local framework_Name = tests and tests[1].Properties.testFramework or "xunit" -- Assume xunit for now
-  fignvim.put(framework_Name)
-  logger.debug("neotest-dotnet: Test framework is " .. framework_Name)
+  logger.debug("neotest-dotnet: Test framework detected as being " .. framework_Name)
   return framework_dictionary[framework_Name]
 end
 

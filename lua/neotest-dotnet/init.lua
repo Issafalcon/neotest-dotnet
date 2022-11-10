@@ -49,7 +49,6 @@ end
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local framework_query = framework_utils.get_treesitter_test_query(path)
-  fignvim.put(framework_query)
 
   local query = [[
     ;; --Namespaces
