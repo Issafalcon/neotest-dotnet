@@ -1,6 +1,3 @@
-local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
-local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
-
 local M = {}
 
 local function parameter_string_to_table(parameter_string)
@@ -23,24 +20,8 @@ local function argument_string_to_table(arg_string)
   return args
 end
 
-local function get_match_type(captured_nodes)
-  if captured_nodes["test.name"] then
-    return "test"
-  end
-  if captured_nodes["namespace.name"] then
-    return "namespace"
-  end
-  if captured_nodes["test.parameterized.name"] then
-    return "test.parameterized"
-  end
-end
-
-M.test_case_prefix = "TestCase"
-
-M.get_treesitter_test_query = function()
-  return unit_test_queries
-    .. specflow_queries
-    .. [[
+M.get_treesitter_query = function()
+  return [[
     ;; query
     ;; Matches XUnit test class (has no specific attributes on class)
     (
@@ -104,44 +85,13 @@ M.get_treesitter_test_query = function()
   ]]
 end
 
-M.position_id = function(position, parents)
-  local original_id = table.concat(
-    vim.tbl_flatten({
-      position.path,
-      vim.tbl_map(function(pos)
-        return pos.name
-      end, parents),
-      position.name,
-    }),
-    "::"
-  )
-
-  -- Check to see if the position is a test case and contains parentheses (meaning it is parameterized)
-  -- If it is, remove the duplicated parent test name from the ID, so that when reading the trx test name
-  -- it will be the same as the test name in the test explorer
-  -- Example:
-  --  When ID is "/path/to/test_file.cs::TestNamespace::TestClassName::ParentTestName::ParentTestName(TestName)"
-  --  Then we need it to be converted to "/path/to/test_file.cs::TestNamespace::TestClassName::ParentTestName(TestName)"
-  if position.type == "test" and position.name:find("%(") then
-    local id_segments = {}
-    for _, segment in ipairs(vim.split(original_id, "::")) do
-      table.insert(id_segments, segment)
-    end
-
-    table.remove(id_segments, #id_segments - 1)
-    return table.concat(id_segments, "::")
-  end
-
-  return original_id
-end
-
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
 ---@param file_path any
 ---@param source any
 ---@param captured_nodes any
+---@param match_type string The type of node that was matched by the TS query
 ---@return table
-M.build_position = function(file_path, source, captured_nodes)
-  local match_type = get_match_type(captured_nodes)
+M.build_position = function(file_path, source, captured_nodes, match_type)
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
   local definition = captured_nodes[match_type .. ".definition"]
   local node = {
@@ -194,14 +144,10 @@ M.build_position = function(file_path, source, captured_nodes)
       end
     end
 
-    nodes[#nodes + 1] = vim.tbl_extend(
-      "force",
-      parameterized_test_node,
-      {
-        name = parameterized_test_node.name .. "(" .. named_params .. ")",
-        range = { args_node:range() },
-      }
-    )
+    nodes[#nodes + 1] = vim.tbl_extend("force", parameterized_test_node, {
+      name = parameterized_test_node.name .. "(" .. named_params .. ")",
+      range = { args_node:range() },
+    })
   end
 
   return nodes
