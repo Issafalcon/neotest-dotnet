@@ -70,7 +70,7 @@ dap.adapters.netcoredbg = {
 | ------------------ | ------------------ | ---------------------------------------------------------- | ------------------ | ---------          |
 | C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                                        | :heavy_check_mark: | :heavy_check_mark:                |
 | C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark: | :heavy_check_mark: |
-| C# - MSTest        | :heavy_check_mark: | :x:                                                        | :interrobang:      | :x:                |
+| C# - MSTest        | :x: (supported soon!) | :x:                                                        | :interrobang:      | :x:                |
 | F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
 | F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
 | F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
