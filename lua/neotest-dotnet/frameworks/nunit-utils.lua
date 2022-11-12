@@ -1,6 +1,10 @@
 ---@type FrameworkUtils
 local M = {}
 
+function M.get_treesitter_queries()
+  return require("neotest-dotnet.tree-sitter.nunit-queries")
+end
+
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
 ---@param file_path any
 ---@param source any

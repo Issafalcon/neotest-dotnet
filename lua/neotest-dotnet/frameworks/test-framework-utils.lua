@@ -1,38 +1,51 @@
 local xunit_utils = require("neotest-dotnet.frameworks.xunit-utils")
 local nunit_utils = require("neotest-dotnet.frameworks.nunit-utils")
+local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local logger = require("neotest.logging")
 
 local M = {}
 
+function M.get_test_framework_utils_from_file(file_path)
+  local test_framework_utils = nil
+  local tests = omnisharp_commands.get_tests_in_file(file_path)
+
+  if tests ~= nil and #tests > 0 then
+    local test_framework = tests[1].Properties.testFramework
+    if test_framework == "xunit" then
+      test_framework_utils = xunit_utils
+    elseif test_framework == "nunit" then
+      test_framework_utils = nunit_utils
+    else
+      logger.error("Unknown test framework: " .. test_framework)
+    end
+  end
+
+  return test_framework_utils
+end
 --- Returns the utils module for the test framework being used, given the current file
 ---@return FrameworkUtils
 function M.get_test_framework_utils(source)
   local framework_query = [[
-      (using_directive
-        (identifier) @package_name (#eq? @package_name "Xunit")
-      )
-      (using_directive
-        (qualified_name
-          (identifier) @package_name (#eq? @package_name "NUnit")
-        )
+      (attribute
+        name: (identifier) @attribute_name (#any-of? @attribute_name "TestMethod" "Test" "Fact")
       )
   ]]
 
   local root = vim.treesitter.get_string_parser(source, "c_sharp"):parse()[1]:root()
   local parsed_query = vim.treesitter.parse_query("c_sharp", framework_query)
   for _, captures in parsed_query:iter_matches(root, source) do
-    local package_name = vim.treesitter.query.get_node_text(captures[1], source)
-    if package_name then
-      if package_name == "Xunit" then
+    local test_attribute = vim.treesitter.query.get_node_text(captures[1], source)
+    if test_attribute then
+      if test_attribute == "Fact" then
         return xunit_utils
-      elseif package_name == "NUnit" then
+      elseif test_attribute == "Test" then
         return nunit_utils
       end
     end
-
-    -- Default fallback
-    return xunit_utils
   end
+
+  -- Default fallback
+  return xunit_utils
 end
 
 function M.get_match_type(captured_nodes)
