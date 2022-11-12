@@ -121,4 +121,8 @@ function M.get_project(file_name, bufnr)
   return response
 end
 
+function M._get_tests_in_file(...)
+  return M.get_tests_in_file(...)
+end
+
 return M

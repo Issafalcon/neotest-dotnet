@@ -1,38 +1,12 @@
-local logger = require("neotest.logging")
-
+---@type FrameworkUtils
 local M = {}
-
-local function parameter_string_to_table(parameter_string)
-  local params = {}
-  for param in string.gmatch(parameter_string:gsub("[()]", ""), "([^,]+)") do
-    -- Split string on whitespace separator and take last element (the param name)
-    local type_identifier_split = vim.split(param, "%s")
-    table.insert(params, type_identifier_split[#type_identifier_split])
-  end
-
-  return params
-end
-
-local function argument_string_to_table(arg_string)
-  local args = {}
-  for arg in string.gmatch(arg_string:gsub("[()]", ""), "([^, ]+)") do
-    table.insert(args, arg)
-  end
-
-  return args
-end
-
-M.get_treesitter_query = function()
-  return require("neotest-dotnet.tree-sitter.nunit-queries")
-end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
 ---@param file_path any
 ---@param source any
 ---@param captured_nodes any
 ---@return table
-M.build_position = function(file_path, source, captured_nodes)
-  local match_type = get_match_type(captured_nodes)
+M.build_position = function(file_path, source, captured_nodes, match_type)
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
   local definition = captured_nodes[match_type .. ".definition"]
   local node = {
@@ -71,20 +45,8 @@ M.build_position = function(file_path, source, captured_nodes)
   local arguments_index = capture_indices["arguments"]
 
   for _, match in param_query:iter_matches(captured_nodes[match_type .. ".definition"], source) do
-    -- local params_text = vim.treesitter.get_node_text(captured_nodes["parameter_list"], source)
     local args_node = match[arguments_index]
     local args_text = vim.treesitter.get_node_text(args_node, source):gsub("[()]", "")
-    logger.debug("N-Unit: args_text: " .. args_text)
-    -- local params_table = parameter_string_to_table(params_text)
-    -- local args_table = argument_string_to_table(args_text)
-
-    -- local named_params = ""
-    -- for i, param in ipairs(params_table) do
-    --   named_params = named_params .. param .. ": " .. args_table[i]
-    --   if i ~= #params_table then
-    --     named_params = named_params .. ", "
-    --   end
-    -- end
 
     nodes[#nodes + 1] = vim.tbl_extend("force", parameterized_test_node, {
       name = parameterized_test_node.name .. "(" .. args_text .. ")",
@@ -92,8 +54,6 @@ M.build_position = function(file_path, source, captured_nodes)
     })
   end
 
-  fignvmim.fn.put(nodes)
-  logger.debug("N-Unit nodes " .. nodes)
   return nodes
 end
 

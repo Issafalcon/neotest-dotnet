@@ -1,6 +1,3 @@
-local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
-local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
-local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local xunit_utils = require("neotest-dotnet.frameworks.xunit-utils")
 local nunit_utils = require("neotest-dotnet.frameworks.nunit-utils")
 local logger = require("neotest.logging")
@@ -8,19 +5,37 @@ local logger = require("neotest.logging")
 local M = {}
 
 --- Returns the utils module for the test framework being used, given the current file
----@param path string The file path to assess to determin which test framework is being used
 ---@return FrameworkUtils
-local function get_test_framework_utils(path)
-  local framework_dictionary = {
-    xunit = xunit_utils,
-    nunit = nunit_utils,
-  }
-  local tests = omnisharp_commands.get_tests_in_file(path)
-  local framework_Name = tests and tests[1].Properties.testFramework
-  return framework_Name and framework_dictionary[framework_Name]
+function M.get_test_framework_utils(source)
+  local framework_query = [[
+      (using_directive
+        (identifier) @package_name (#eq? @package_name "Xunit")
+      )
+      (using_directive
+        (qualified_name
+          (identifier) @package_name (#eq? @package_name "NUnit")
+        )
+      )
+  ]]
+
+  local root = vim.treesitter.get_string_parser(source, "c_sharp"):parse()[1]:root()
+  local parsed_query = vim.treesitter.parse_query("c_sharp", framework_query)
+  for _, captures in parsed_query:iter_matches(root, source) do
+    local package_name = vim.treesitter.query.get_node_text(captures[1], source)
+    if package_name then
+      if package_name == "Xunit" then
+        return xunit_utils
+      elseif package_name == "NUnit" then
+        return nunit_utils
+      end
+    end
+
+    -- Default fallback
+    return xunit_utils
+  end
 end
 
-local function get_match_type(captured_nodes)
+function M.get_match_type(captured_nodes)
   if captured_nodes["test.name"] then
     return "test"
   end
@@ -30,12 +45,6 @@ local function get_match_type(captured_nodes)
   if captured_nodes["test.parameterized.name"] then
     return "test.parameterized"
   end
-end
-
-M.get_treesitter_test_query = function(path)
-  local utils = get_test_framework_utils(path)
-  local framework_query = utils.get_treesitter_query()
-  return unit_test_queries .. specflow_queries .. framework_query
 end
 
 M.position_id = function(position, parents)
@@ -75,14 +84,9 @@ end
 ---@param captured_nodes any
 ---@return table
 M.build_position = function(file_path, source, captured_nodes)
-  local match_type = get_match_type(captured_nodes)
-  logger.debug("File Path:" .. file_path)
-  return get_test_framework_utils(file_path).build_position(
-    file_path,
-    source,
-    captured_nodes,
-    match_type
-  )
+  local match_type = M.get_match_type(captured_nodes)
+  return M.get_test_framework_utils(source)
+    .build_position(file_path, source, captured_nodes, match_type)
 end
 
 return M

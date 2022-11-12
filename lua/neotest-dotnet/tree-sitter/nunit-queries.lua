@@ -5,7 +5,7 @@ return [[
         (attribute
           name: (identifier) @attribute_name (#match? @attribute_name "^TestCase")
         )
-      )
+      )+
       name: (identifier) @test.parameterized.name
       parameters: (parameter_list
         (parameter

@@ -1,3 +1,4 @@
+---@type FrameworkUtils
 local M = {}
 
 local function parameter_string_to_table(parameter_string)
@@ -18,10 +19,6 @@ local function argument_string_to_table(arg_string)
   end
 
   return args
-end
-
-M.get_treesitter_query = function()
-  return require("neotest-dotnet.tree-sitter.xunit-queries")
 end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.

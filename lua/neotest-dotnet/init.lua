@@ -6,6 +6,10 @@ local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
+local xunit_queries = require("neotest-dotnet.tree-sitter.xunit-queries")
+local nunit_queries = require("neotest-dotnet.tree-sitter.nunit-queries")
+local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
+local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
@@ -48,9 +52,6 @@ end
 ---@param path any
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
-  local framework_query = framework_utils.get_treesitter_test_query(path)
-  fignvim.fn.put(framework_query)
-
   local query = [[
     ;; --Namespaces
     ;; Matches namespace
@@ -62,7 +63,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
     (file_scoped_namespace_declaration
         name: (qualified_name) @namespace.name
     ) @namespace.definition
-  ]] .. framework_query
+  ]] .. unit_test_queries .. specflow_queries .. xunit_queries .. nunit_queries
 
   local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,

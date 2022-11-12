@@ -1,4 +1,2 @@
 ---@class FrameworkUtils
----@field test_case_prefix string The prefix to use for paramaterized test case queries
----@field get_treesitter_query function Returns the treesitter query for the framework
 ---@field build_position function() Builds a position from captured nodes based on framework specific rules
