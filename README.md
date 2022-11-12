@@ -68,7 +68,7 @@ dap.adapters.netcoredbg = {
 
 | Runner / Framework | Unit Tests         | Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow           | Debugging          |
 | ------------------ | ------------------ | ---------------------------------------------------------- | ------------------ | ---------          |
-| C# - NUnit         | :heavy_check_mark: | :x:                                                        | :heavy_check_mark: | :x:                |
+| C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                                        | :heavy_check_mark: | :heavy_check_mark:                |
 | C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark: | :heavy_check_mark: |
 | C# - MSTest        | :heavy_check_mark: | :x:                                                        | :interrobang:      | :x:                |
 | F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
