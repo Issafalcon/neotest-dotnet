@@ -1,5 +1,4 @@
 local omnisharp_client = require("neotest-dotnet.omnisharp-lsp.client")
-local async = require("neotest.async")
 local M = {}
 
 local omnisharpEndpoints = {
@@ -40,17 +39,6 @@ local function find_tests_in_file(code_elements, test_list)
   return test_list
 end
 
-local function find_test(tests)
-  for _, test in ipairs(tests) do
-    local test_ranges = test.Ranges.full
-    if
-      async.fn.line(".") >= test_ranges.Start.Line and async.fn.line(".") <= test_ranges.End.Line
-    then
-      return test
-    end
-  end
-end
-
 --- Gets the code structure of the current .cs file
 ---@return table | nil:
 ---   {
@@ -64,7 +52,7 @@ end
 ---             Properties = {
 ---               accessibility?: "optional",
 ---               static?: "boolean indicating if item is static",
----               testFrameworkName?: "indicates test framework. Only present if this element is a test method",
+---               testFramework?: "indicates test framework. Only present if this element is a test method",
 ---               testMethodName?: "Fully qualified test name. Only if this element is test method"
 ---             },
 ---             Ranges = {
@@ -131,6 +119,10 @@ function M.get_project(file_name, bufnr)
 
   local response = omnisharp_client.make_request(omnisharpEndpoints.project, params, bufnr)
   return response
+end
+
+function M._get_tests_in_file(...)
+  return M.get_tests_in_file(...)
 end
 
 return M

@@ -4,8 +4,12 @@ local async = require("neotest.async")
 local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
-local xunit_utils = require("neotest-dotnet.tree-sitter.xunit-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
+local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
+local xunit_queries = require("neotest-dotnet.tree-sitter.xunit-queries")
+local nunit_queries = require("neotest-dotnet.tree-sitter.nunit-queries")
+local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
+local unit_test_queries = require("neotest-dotnet.tree-sitter.unit-test-queries")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
@@ -37,13 +41,11 @@ local function get_test_nodes_data(tree)
 end
 
 DotnetNeotestAdapter._build_position = function(...)
-  -- TODO: Implement strategy pattern for different test frameworks
-  -- using omnisharp to determine the test runner being used
-  return xunit_utils.build_position(...)
+  return framework_utils.build_position(...)
 end
 
 DotnetNeotestAdapter._position_id = function(...)
-  return xunit_utils.position_id(...)
+  return framework_utils.position_id(...)
 end
 
 ---Implementation of core neotest function.
@@ -61,7 +63,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
     (file_scoped_namespace_declaration
         name: (qualified_name) @namespace.name
     ) @namespace.definition
-  ]] .. xunit_utils.get_treesitter_test_query()
+  ]] .. unit_test_queries .. specflow_queries .. xunit_queries .. nunit_queries
 
   local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,

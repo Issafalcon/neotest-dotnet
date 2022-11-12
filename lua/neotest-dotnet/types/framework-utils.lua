@@ -1,0 +1,2 @@
+---@class FrameworkUtils
+---@field build_position function() Builds a position from captured nodes based on framework specific rules
