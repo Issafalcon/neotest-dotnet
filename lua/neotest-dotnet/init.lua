@@ -112,7 +112,7 @@ DotnetNeotestAdapter.build_spec = function(args)
     "test",
     test_root,
     filter,
-    "-r",
+    "--results-directory",
     vim.fn.fnamemodify(results_path, ":h"),
     "--logger",
     '"trx;logfilename=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
