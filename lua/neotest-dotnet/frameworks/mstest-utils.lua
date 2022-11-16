@@ -2,7 +2,7 @@
 local M = {}
 
 function M.get_treesitter_queries()
-  return require("neotest-dotnet.tree-sitter.nunit-queries")
+  return require("neotest-dotnet.tree-sitter.mstest-queries")
 end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
@@ -18,7 +18,7 @@ M.build_parameterized_test_positions = function(base_node, source, captured_node
       ;;query
       (attribute_list
         (attribute
-          name: (identifier) @attribute_name (#any-of? @attribute_name "TestCase")
+          name: (identifier) @attribute_name (#any-of? @attribute_name "DataRow")
           ((attribute_argument_list) @arguments)
         )
       )
@@ -41,7 +41,7 @@ M.build_parameterized_test_positions = function(base_node, source, captured_node
     local args_text = vim.treesitter.get_node_text(args_node, source):gsub("[()]", "")
 
     nodes[#nodes + 1] = vim.tbl_extend("force", parameterized_test_node, {
-      name = parameterized_test_node.name .. "(" .. args_text .. ")",
+      name = parameterized_test_node.name .. " (" .. args_text .. ")",
       range = { args_node:range() },
     })
   end
