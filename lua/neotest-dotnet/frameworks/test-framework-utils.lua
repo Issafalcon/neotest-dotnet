@@ -104,8 +104,22 @@ end
 ---@return table
 M.build_position = function(file_path, source, captured_nodes)
   local match_type = M.get_match_type(captured_nodes)
+
+  local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
+  local definition = captured_nodes[match_type .. ".definition"]
+  local node = {
+    type = match_type,
+    path = file_path,
+    name = name,
+    range = { definition:range() },
+  }
+
+  if match_type and match_type ~= "test.parameterized" then
+    return node
+  end
+
   return M.get_test_framework_utils(source)
-    .build_position(file_path, source, captured_nodes, match_type)
+    .build_parameterized_test_positions(node, source, captured_nodes, match_type)
 end
 
 return M

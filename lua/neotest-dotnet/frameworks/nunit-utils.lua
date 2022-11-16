@@ -6,24 +6,12 @@ function M.get_treesitter_queries()
 end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
----@param file_path any
+---@param base_node table The initial root node to build the positions from
 ---@param source any
 ---@param captured_nodes any
+---@param match_type string The type of node that was matched by the TS query
 ---@return table
-M.build_position = function(file_path, source, captured_nodes, match_type)
-  local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
-  local definition = captured_nodes[match_type .. ".definition"]
-  local node = {
-    type = match_type,
-    path = file_path,
-    name = name,
-    range = { definition:range() },
-  }
-
-  if match_type and match_type ~= "test.parameterized" then
-    return node
-  end
-
+M.build_parameterized_test_positions = function(base_node, source, captured_nodes, match_type)
   local param_query = vim.treesitter.parse_query(
     "c_sharp",
     [[
@@ -38,7 +26,7 @@ M.build_position = function(file_path, source, captured_nodes, match_type)
   )
 
   -- Set type to test (otherwise it will be test.parameterized)
-  local parameterized_test_node = vim.tbl_extend("force", node, { type = "test" })
+  local parameterized_test_node = vim.tbl_extend("force", base_node, { type = "test" })
   local nodes = { parameterized_test_node }
 
   -- Test method has parameters, so we need to create a sub-position for each test case
