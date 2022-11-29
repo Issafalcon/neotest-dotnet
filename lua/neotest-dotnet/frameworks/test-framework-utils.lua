@@ -1,31 +1,10 @@
 local xunit_utils = require("neotest-dotnet.frameworks.xunit-utils")
 local nunit_utils = require("neotest-dotnet.frameworks.nunit-utils")
 local mstest_utils = require("neotest-dotnet.frameworks.mstest-utils")
-local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local logger = require("neotest.logging")
 
 local M = {}
 
-function M.get_test_framework_utils_from_file(file_path)
-  local test_framework_utils = nil
-  local tests = omnisharp_commands.get_tests_in_file(file_path)
-
-  if tests ~= nil and #tests > 0 then
-    local test_framework = tests[1].Properties.testFramework
-    logger.debug("Test Framework Identified as " .. test_framework)
-    if test_framework == "xunit" then
-      test_framework_utils = xunit_utils
-    elseif test_framework == "nunit" then
-      test_framework_utils = nunit_utils
-    elseif test_framework == "mstest" then
-      test_framework_utils = mstest_utils
-    else
-      logger.error("Unknown test framework: " .. test_framework)
-    end
-  end
-
-  return test_framework_utils
-end
 --- Returns the utils module for the test framework being used, given the current file
 ---@return FrameworkUtils
 function M.get_test_framework_utils(source)
