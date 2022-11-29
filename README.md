@@ -10,10 +10,9 @@ Neotest adapter for dotnet tests
 
 neotest-dotnet requires makes a number of assumptions about your environment:
 
-1. Omnisharp-LSP is installed and active in the current buffer
-2. The `dotnet sdk` that is compatible with the current project is installed and the `dotnet` executable is on the users runtime path (future updates may allow customisation of the dotnet exe location)
-3. The user is running tests using one of the supported test runners / frameworks (see support grid)
-4. (For Debugging) `netcoredbg` is installed and `nvim-dap` plugin has been configured for `netcoredbg` (see debug config for more details)
+1. The `dotnet sdk` that is compatible with the current project is installed and the `dotnet` executable is on the users runtime path (future updates may allow customisation of the dotnet exe location)
+2. The user is running tests using one of the supported test runners / frameworks (see support grid)
+3. (For Debugging) `netcoredbg` is installed and `nvim-dap` plugin has been configured for `netcoredbg` (see debug config for more details)
 
 # Installation
 
@@ -69,8 +68,8 @@ dap.adapters.netcoredbg = {
 | Runner / Framework | Unit Tests         | Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow           | Debugging          |
 | ------------------ | ------------------ | ---------------------------------------------------------- | ------------------ | ---------          |
 | C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark: | :heavy_check_mark: |
-| C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark: | :heavy_check_mark: |
-| C# - MSTest        | :heavy_check_mark: | :heavy_check_mark:                                         | :interrobang:      | :heavy_check_mark: |
+| C# - XUnit         | :heavy_check_mark: | :part_alternation_mark: (issues with test name linking)    | :heavy_check_mark: | :heavy_check_mark: |
+| C# - MSTest        | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark: | :heavy_check_mark: |
 | F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
 | F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
 | F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
@@ -80,5 +79,6 @@ dap.adapters.netcoredbg = {
 
 1. A tradeoff was made between being able to run parameterized tests and the specificity of the `dotnet --filter` command options. A more lenient 'contains' type filter is used
 in order for the adapter to be able to work with parameterized tests. Unfortunately, no amount of formatting would support specific `FullyQualifiedName` filters for the dotnet test command for parameterized tests.
-2. See the support guidance for feature and language support (regular users of F# needed!)
+2. See the support guidance for feature and language support
+- F# is currently unsupported due to the fact there is no complete tree-sitter parser for F# available as yet (https://github.com/baronfel/tree-sitter-fsharp)
 3. As mentioned in the **Debugging** section, there are some discrepancies in test output at the moment.
