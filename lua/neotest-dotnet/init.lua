@@ -5,10 +5,20 @@ local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
-local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
+
+local function get_test_nodes_data(tree)
+  local test_nodes = {}
+  for _, node in tree:iter_nodes() do
+    if node:data().type == "test" then
+      table.insert(test_nodes, node)
+    end
+  end
+
+  return test_nodes
+end
 
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
@@ -23,15 +33,8 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
   end
 end
 
-local function get_test_nodes_data(tree)
-  local test_nodes = {}
-  for _, node in tree:iter_nodes() do
-    if node:data().type == "test" then
-      table.insert(test_nodes, node)
-    end
-  end
-
-  return test_nodes
+DotnetNeotestAdapter.filter_dir = function(name)
+  return name ~= "bin" and name ~= "obj"
 end
 
 DotnetNeotestAdapter._build_position = function(...)
@@ -61,7 +64,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
     (file_scoped_namespace_declaration
         name: (qualified_name) @namespace.name
     ) @namespace.definition
-  ]] .. specflow_queries .. framework_queries
+  ]] .. framework_queries
 
   local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,

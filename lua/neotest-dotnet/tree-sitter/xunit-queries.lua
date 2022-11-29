@@ -14,6 +14,16 @@ return [[
       name: (identifier) @test.name
     ) @test.definition
 
+    ;; Specflow - XUnit
+    (method_declaration
+      (attribute_list
+        (attribute
+          name: (qualified_name) @attribute_name (#match? @attribute_name "SkippableFactAttribute$")
+        )
+      )
+      name: (identifier) @test.name
+    ) @test.definition
+
     ;; Matches parameterized test methods
     (method_declaration
       (attribute_list
