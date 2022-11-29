@@ -1,30 +1,13 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
 local async = require("neotest.async")
-local omnisharp_commands = require("neotest-dotnet.omnisharp-lsp.requests")
 local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
-local specflow_queries = require("neotest-dotnet.tree-sitter.specflow-queries")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
-
-DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
-
-DotnetNeotestAdapter.is_test_file = function(file_path)
-  -- TODO: Add logging and test this function
-  if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
-    async.util.scheduler()
-    local tests = omnisharp_commands.get_tests_in_file(file_path)
-
-    local is_test_file = tests ~= nil and #tests > 0
-    return is_test_file
-  else
-    return false
-  end
-end
 
 local function get_test_nodes_data(tree)
   local test_nodes = {}
@@ -35,6 +18,23 @@ local function get_test_nodes_data(tree)
   end
 
   return test_nodes
+end
+
+DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
+
+DotnetNeotestAdapter.is_test_file = function(file_path)
+  if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
+    local content = lib.files.read(file_path)
+    return string.find(content, "Test")
+      or string.find(content, "TestMethod")
+      or string.find(content, "Fact")
+  else
+    return false
+  end
+end
+
+DotnetNeotestAdapter.filter_dir = function(name)
+  return name ~= "bin" and name ~= "obj"
 end
 
 DotnetNeotestAdapter._build_position = function(...)
@@ -49,7 +49,8 @@ end
 ---@param path any
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
-  local test_framework = framework_utils.get_test_framework_utils_from_file(path)
+  local content = lib.files.read(path)
+  local test_framework = framework_utils.get_test_framework_utils(content)
   local framework_queries = test_framework.get_treesitter_queries()
 
   local query = [[
@@ -63,7 +64,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
     (file_scoped_namespace_declaration
         name: (qualified_name) @namespace.name
     ) @namespace.definition
-  ]] .. specflow_queries .. framework_queries
+  ]] .. framework_queries
 
   local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,
