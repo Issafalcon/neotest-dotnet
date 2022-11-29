@@ -65,14 +65,14 @@ dap.adapters.netcoredbg = {
 
 :x: = Unsupported (tested)
 
-| Runner / Framework | Unit Tests         | Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow           | Debugging          |
-| ------------------ | ------------------ | ---------------------------------------------------------- | ------------------ | ---------          |
-| C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark: | :heavy_check_mark: |
-| C# - XUnit         | :heavy_check_mark: | :part_alternation_mark: (issues with test name linking)    | :heavy_check_mark: | :heavy_check_mark: |
-| C# - MSTest        | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark: | :heavy_check_mark: |
-| F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
-| F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
-| F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:      | :interrobang:      |
+| Runner / Framework | Unit Tests         | Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow                                                | Debugging          |
+| ------------------ | ------------------ | ---------------------------------------------------------- | ------------------                                      | ---------          |
+| C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark:                                      | :heavy_check_mark: |
+| C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :part_alternation_mark: (issues with test name linking) | :heavy_check_mark: |
+| C# - MSTest        | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark:                                      | :heavy_check_mark: |
+| F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
+| F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
+| F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
 
 
 # Limitations
