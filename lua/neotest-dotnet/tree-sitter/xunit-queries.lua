@@ -1,4 +1,16 @@
-return [[
+local M = {}
+
+function M.get_queries(custom_attributes)
+  local custom_fact_attributes = custom_attributes.Fact
+      and table.concat(
+        vim.tbl_map(function(attribute)
+          return '"' .. attribute .. '"'
+        end, custom_attributes.Fact),
+        " "
+      )
+    or ""
+
+  return [[
     ;; Matches XUnit test class (has no specific attributes on class)
     (class_declaration
       name: (identifier) @namespace.name
@@ -8,7 +20,7 @@ return [[
     (method_declaration
       (attribute_list
         (attribute
-          name: (identifier) @attribute_name (#eq? @attribute_name "Fact")
+          name: (identifier) @attribute_name (#any-of? @attribute_name "Fact" ]] .. custom_fact_attributes .. [[)
         )
       )
       name: (identifier) @test.name
@@ -39,3 +51,6 @@ return [[
       ) @parameter_list
     ) @test.parameterized.definition
 ]]
+end
+
+return M

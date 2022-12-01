@@ -11,7 +11,7 @@ local M = {}
 function M.get_test_framework_utils(source)
   local framework_query = [[
       (attribute
-        name: (identifier) @attribute_name (#any-of? @attribute_name "TestMethod" "Test" "Fact")
+        name: (identifier) @attribute_name (#any-of? @attribute_name "Theory" "TestMethod" "Test" "Fact")
       )
 
       (attribute

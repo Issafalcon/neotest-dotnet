@@ -21,8 +21,9 @@ local function argument_string_to_table(arg_string)
   return args
 end
 
-function M.get_treesitter_queries()
-  return require("neotest-dotnet.tree-sitter.xunit-queries")
+function M.get_treesitter_queries(custom_attribute_args)
+  local xunit_attribute_map = custom_attribute_args.xunit
+  return require("neotest-dotnet.tree-sitter.xunit-queries").get_queries(xunit_attribute_map)
 end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
