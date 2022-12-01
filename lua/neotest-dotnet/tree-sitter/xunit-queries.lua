@@ -1,14 +1,9 @@
+local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
+
 local M = {}
 
 function M.get_queries(custom_attributes)
-  local custom_fact_attributes = custom_attributes.Fact
-      and table.concat(
-        vim.tbl_map(function(attribute)
-          return '"' .. attribute .. '"'
-        end, custom_attributes.Fact),
-        " "
-      )
-    or ""
+  local custom_fact_attributes = attribute_utils.get_custom_fact_attributes(custom_attributes.Fact)
 
   return [[
     ;; Matches XUnit test class (has no specific attributes on class)

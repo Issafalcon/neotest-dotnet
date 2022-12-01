@@ -1,6 +1,7 @@
 local xunit_utils = require("neotest-dotnet.frameworks.xunit-utils")
 local nunit_utils = require("neotest-dotnet.frameworks.nunit-utils")
 local mstest_utils = require("neotest-dotnet.frameworks.mstest-utils")
+local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
 local logger = require("neotest.logging")
 local async = require("neotest.async")
 
@@ -8,7 +9,9 @@ local M = {}
 
 --- Returns the utils module for the test framework being used, given the current file
 ---@return FrameworkUtils
-function M.get_test_framework_utils(source)
+function M.get_test_framework_utils(source, custom_attribute_args)
+  local xunit_attributes = attribute_utils.xunit_attribute_matcher(custom_attribute_args)
+
   local framework_query = [[
       (attribute
         name: (identifier) @attribute_name (#any-of? @attribute_name "Theory" "TestMethod" "Test" "Fact")

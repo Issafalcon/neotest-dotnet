@@ -5,6 +5,7 @@ local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
+local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
@@ -25,33 +26,34 @@ DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
   if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
-    local test_attributes = {
-      "Fact",
-      "Theory",
-      "SkippableFactAttribute",
-      "Test",
-      "TestMethod",
-      "TestAttribute",
-    }
-
     local content = lib.files.read(file_path)
 
     local found_derived_attribute
     local found_standard_test_attribute
 
-    for _, test_attribute in ipairs(test_attributes) do
+    local all_test_attributes = vim.tbl_extend(
+      "force",
+      attribute_utils.mstest_attributes,
+      attribute_utils.nunit_test_attributes,
+      attribute_utils.xunit_test_attributes,
+      attribute_utils.specflow_test_attributes
+    )
+
+    for _, test_attribute in ipairs(all_test_attributes) do
       if string.find(content, "%[" .. test_attribute) then
         found_standard_test_attribute = true
         break
       end
     end
 
-    for _, framework in pairs(custom_attribute_args) do
-      for _, attributes in pairs(framework) do
-        for _, value in ipairs(attributes) do
-          if string.find(content, value) then
-            found_derived_attribute = true
-            break
+    if custom_attribute_args then
+      for _, framework in pairs(custom_attribute_args) do
+        for _, attributes in pairs(framework) do
+          for _, value in ipairs(attributes) do
+            if string.find(content, value) then
+              found_derived_attribute = true
+              break
+            end
           end
         end
       end
@@ -80,7 +82,7 @@ end
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
-  local test_framework = framework_utils.get_test_framework_utils(content)
+  local test_framework = framework_utils.get_test_framework_utils(content, custom_attribute_args)
   local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
 
   local query = [[
