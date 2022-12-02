@@ -10,11 +10,14 @@ local M = {}
 --- Returns the utils module for the test framework being used, given the current file
 ---@return FrameworkUtils
 function M.get_test_framework_utils(source, custom_attribute_args)
-  local xunit_attributes = attribute_utils.xunit_attribute_matcher(custom_attribute_args)
+  fignvim.fn.put(custom_attribute_args)
+  local xunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "xunit")
+  local mstest_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "mstest")
+  local nunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "nunit")
 
   local framework_query = [[
       (attribute
-        name: (identifier) @attribute_name (#any-of? @attribute_name "Theory" "TestMethod" "Test" "Fact")
+        name: (identifier) @attribute_name (#any-of? @attribute_name ]] .. xunit_attributes .. " " .. nunit_attributes .. " " .. mstest_attributes .. [[)
       )
 
       (attribute
@@ -36,12 +39,19 @@ function M.get_test_framework_utils(source, custom_attribute_args)
   for _, captures in parsed_query:iter_matches(root, source) do
     local test_attribute = vim.treesitter.query.get_node_text(captures[1], source)
     if test_attribute then
-      if test_attribute == "Fact" or string.find(test_attribute, "SkippableFactAttribute") then
+      if
+        string.find(xunit_attributes, test_attribute)
+        or string.find(test_attribute, "SkippableFactAttribute")
+      then
         return xunit_utils
-      elseif test_attribute == "Test" or string.find(test_attribute, "TestAttribute") then
+      elseif
+        string.find(nunit_attributes, test_attribute)
+        or string.find(test_attribute, "TestAttribute")
+      then
         return nunit_utils
       elseif
-        test_attribute == "TestMethod" or string.find(test_attribute, "TestMethodAttribute")
+        string.find(mstest_attributes, test_attribute)
+        or string.find(test_attribute, "TestMethodAttribute")
       then
         return mstest_utils
       else

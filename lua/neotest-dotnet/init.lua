@@ -31,15 +31,10 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     local found_derived_attribute
     local found_standard_test_attribute
 
-    local all_test_attributes = vim.tbl_extend(
-      "force",
-      attribute_utils.mstest_attributes,
-      attribute_utils.nunit_test_attributes,
-      attribute_utils.xunit_test_attributes,
-      attribute_utils.specflow_test_attributes
-    )
+    -- Combine all attribute list arrays into one
+    local all_attributes = attribute_utils.all_test_attributes
 
-    for _, test_attribute in ipairs(all_test_attributes) do
+    for _, test_attribute in ipairs(all_attributes) do
       if string.find(content, "%[" .. test_attribute) then
         found_standard_test_attribute = true
         break
@@ -47,13 +42,11 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     end
 
     if custom_attribute_args then
-      for _, framework in pairs(custom_attribute_args) do
-        for _, attributes in pairs(framework) do
-          for _, value in ipairs(attributes) do
-            if string.find(content, value) then
-              found_derived_attribute = true
-              break
-            end
+      for _, framework_attrs in pairs(custom_attribute_args) do
+        for _, value in ipairs(framework_attrs) do
+          if string.find(content, "%[" .. value) then
+            found_derived_attribute = true
+            break
           end
         end
       end

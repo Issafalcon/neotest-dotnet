@@ -1,4 +1,13 @@
-return [[
+local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
+
+local M = {}
+
+function M.get_queries(custom_attributes)
+  -- Don't include parameterized test attribute indicators so we don't double count them
+  local custom_testmethod_attributes =
+    attribute_utils.join_test_attributes(custom_attributes.mstest)
+
+  return [[
     ;; Matches SpecFlow generated classes
     (class_declaration
       (attribute_list
@@ -37,7 +46,7 @@ return [[
     (method_declaration
       (attribute_list
         (attribute
-          name: (identifier) @attribute_name (#eq? @attribute_name "TestMethod")
+          name: (identifier) @attribute_name (#eq? @attribute_name "TestMethod" ]] .. custom_testmethod_attributes .. [[)
         )
       )
       name: (identifier) @test.name
@@ -57,4 +66,7 @@ return [[
         )*
       ) @parameter_list
     ) @test.parameterized.definition
-]]
+  ]]
+end
+
+return M

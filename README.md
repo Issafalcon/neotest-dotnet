@@ -57,11 +57,11 @@ require("neotest").setup({
       -- See https://github.com/microsoft/debugpy/wiki/Debug-configuration-settings for values
       dap = { justMyCode = false },
       -- Let the test-discovery know about your custom attributes (otherwise tests with not be picked up)
+      -- Note: Only custom attributes for non-parameterized tests should be added here. See the support note about parameterized tests
       custom_attributes = {
-        xunit = {
-          Fact = { "MyCustomAttribute", "AnotherDerivedFactAttribute"},
-          Theory = {}
-        }
+        xunit = { "MyCustomFactAttribute" },
+        nunit = { "MyCustomTestAttribute" },
+        mstest = { "MyCustomTestMethodAttribute" }
       }
     })
   }
@@ -99,7 +99,7 @@ dap.adapters.netcoredbg = {
 
 :x: = Unsupported (tested)
 
-| Runner / Framework | Unit Tests         | Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow                                                | Debugging          |
+| Runner / Framework | Unit Tests         | *Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow                                                | Debugging          |
 | ------------------ | ------------------ | ---------------------------------------------------------- | ------------------------------------------------------- | ------------------ |
 | C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark:                                      | :heavy_check_mark: |
 | C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :part_alternation_mark: (issues with test name linking) | :heavy_check_mark: |
@@ -107,6 +107,9 @@ dap.adapters.netcoredbg = {
 | F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
 | F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
 | F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
+
+* Parameterized tests are only itemized by the adapter when the attribute arguments are inline values. For any parameterized test attributes (including custom ones) that take non-inlined values
+the adapter will lump all these tests together in one.
 
 # Limitations
 

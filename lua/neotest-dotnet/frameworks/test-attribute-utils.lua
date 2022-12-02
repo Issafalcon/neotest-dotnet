@@ -21,16 +21,34 @@ M.specflow_test_attributes = {
   "TestAttribute",
 }
 
-function M.xunit_attribute_matcher(custom_attribute_args)
-  local combined_attr_list = {}
-  if custom_attribute_args.xunit then
-    for _, attr in ipairs(M.xunit_test_attributes) do
-      table.insert(combined_attr_list, attr)
-      vim.tbl_extend("force", combined_attr_list, custom_attribute_args.xunit[attr])
-    end
+M.all_test_attributes = vim.tbl_flatten({
+  M.xunit_test_attributes,
+  M.nunit_test_attributes,
+  M.mstest_test_attributes,
+  M.specflow_test_attributes,
+})
+
+--- Gets a list of the standard and customized test attributes for xUnit, for use in a tree-sitter predicates
+---@param custom_attribute_args table The user configured mapping of the custom test attributes
+---@param framework string The name of the test framework
+---@return
+function M.attribute_match_list(custom_attribute_args, framework)
+  local attribute_match_list = {}
+  if framework == "xunit" then
+    attribute_match_list = M.xunit_test_attributes
+  end
+  if framework == "mstest" then
+    attribute_match_list = M.mstest_test_attributes
+  end
+  if framework == "nunit" then
+    attribute_match_list = M.nunit_test_attributes
   end
 
-  return M.join_test_attributes(combined_attr_list)
+  if custom_attribute_args and custom_attribute_args[framework] then
+    vim.tbl_flatten({ attribute_match_list, custom_attribute_args[framework] })
+  end
+
+  return M.join_test_attributes(attribute_match_list)
 end
 
 function M.join_test_attributes(attributes)
@@ -44,4 +62,5 @@ function M.join_test_attributes(attributes)
     or ""
   return joined_attributes
 end
+
 return M
