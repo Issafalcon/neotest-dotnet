@@ -5,9 +5,11 @@ local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
+local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
+local custom_attribute_args
 
 local function get_test_nodes_data(tree)
   local test_nodes = {}
@@ -25,9 +27,32 @@ DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 DotnetNeotestAdapter.is_test_file = function(file_path)
   if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
     local content = lib.files.read(file_path)
-    return string.find(content, "Test")
-      or string.find(content, "TestMethod")
-      or string.find(content, "Fact")
+
+    local found_derived_attribute
+    local found_standard_test_attribute
+
+    -- Combine all attribute list arrays into one
+    local all_attributes = attribute_utils.all_test_attributes
+
+    for _, test_attribute in ipairs(all_attributes) do
+      if string.find(content, "%[" .. test_attribute) then
+        found_standard_test_attribute = true
+        break
+      end
+    end
+
+    if custom_attribute_args then
+      for _, framework_attrs in pairs(custom_attribute_args) do
+        for _, value in ipairs(framework_attrs) do
+          if string.find(content, "%[" .. value) then
+            found_derived_attribute = true
+            break
+          end
+        end
+      end
+    end
+
+    return found_standard_test_attribute or found_derived_attribute
   else
     return false
   end
@@ -50,8 +75,8 @@ end
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
-  local test_framework = framework_utils.get_test_framework_utils(content)
-  local framework_queries = test_framework.get_treesitter_queries()
+  local test_framework = framework_utils.get_test_framework_utils(content, custom_attribute_args)
+  local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
 
   local query = [[
     ;; --Namespaces
@@ -179,6 +204,9 @@ setmetatable(DotnetNeotestAdapter, {
   __call = function(_, opts)
     if type(opts.dap) == "table" then
       dap_args = opts.dap
+    end
+    if type(opts.custom_attributes) == "table" then
+      custom_attribute_args = opts.custom_attributes
     end
     return DotnetNeotestAdapter
   end,
