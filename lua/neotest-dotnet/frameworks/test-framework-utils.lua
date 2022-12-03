@@ -10,7 +10,6 @@ local M = {}
 --- Returns the utils module for the test framework being used, given the current file
 ---@return FrameworkUtils
 function M.get_test_framework_utils(source, custom_attribute_args)
-  fignvim.fn.put(custom_attribute_args)
   local xunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "xunit")
   local mstest_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "mstest")
   local nunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "nunit")
