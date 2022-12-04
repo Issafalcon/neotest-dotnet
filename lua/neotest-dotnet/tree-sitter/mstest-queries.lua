@@ -4,8 +4,9 @@ local M = {}
 
 function M.get_queries(custom_attributes)
   -- Don't include parameterized test attribute indicators so we don't double count them
-  local custom_testmethod_attributes =
-    attribute_utils.join_test_attributes(custom_attributes.mstest)
+  local custom_fact_attributes = custom_attributes
+      and attribute_utils.join_test_attributes(custom_attributes.mstest)
+    or ""
 
   return [[
     ;; Matches SpecFlow generated classes
@@ -46,7 +47,7 @@ function M.get_queries(custom_attributes)
     (method_declaration
       (attribute_list
         (attribute
-          name: (identifier) @attribute_name (#eq? @attribute_name "TestMethod" ]] .. custom_testmethod_attributes .. [[)
+          name: (identifier) @attribute_name (#eq? @attribute_name "TestMethod")
         )
       )
       name: (identifier) @test.name
