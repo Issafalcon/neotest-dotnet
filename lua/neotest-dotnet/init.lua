@@ -22,6 +22,25 @@ local function get_test_nodes_data(tree)
   return test_nodes
 end
 
+
+function get_folder_from_path(str)
+    return str:match("(.*"..lib.files.sep..")")
+end
+
+function concatenate_tables(table1, table2)
+    if table1 == null then
+        return table2
+    end
+    if table2 == null then
+        return table1
+    end
+
+    for i=1,#table2 do
+        table1[#table1+1] = table2[i]
+    end
+    return table1
+end
+
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
@@ -141,7 +160,7 @@ DotnetNeotestAdapter.build_spec = function(args)
     "--results-directory",
     vim.fn.fnamemodify(results_path, ":h"),
     "--logger",
-    '"trx;logfilename=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
+    '"trx;logfileprefix=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
   }
 
   local command_string = table.concat(command, " ")
@@ -153,7 +172,7 @@ DotnetNeotestAdapter.build_spec = function(args)
       id = position.id,
     },
   }
-
+print(vim.inspect(command))
   if args.strategy == "dap" then
     local send_debug_start, await_debug_start = async.control.channel.oneshot()
     logger.debug("neotest-dotnet: Running tests in debug mode")
@@ -177,27 +196,39 @@ end
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, _, tree)
-  local output_file = spec.context.results_path
+    local output_file_prefix = spec.context.results_path
 
-  local parsed_data = trx_utils.parse_trx(output_file)
-  local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+    -- Get list of trx files
+    local folder = get_folder_from_path(output_file_prefix):sub(1, -2)
+    local files = lib.files.find(folder)
 
-  -- No test results. Something went wrong. Check for runtime error
-  if not test_results then
-    return result_utils.get_runtime_error(spec.context.id)
-  end
+    local test_nodes = get_test_nodes_data(tree)
 
-  if #test_results.UnitTestResult > 1 then
-    test_results = test_results.UnitTestResult
-  end
+    local intermediate_results
+    for _, v in ipairs(files) do
+        if(v:find(output_file_prefix, 1, true) == 1) then
+            local parsed_data = trx_utils.parse_trx(v)
+            local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
 
-  local test_nodes = get_test_nodes_data(tree)
-  local intermediate_results = result_utils.create_intermediate_results(test_results)
+            -- No test results. Something went wrong. Check for runtime error
+            if not test_results then
+                return result_utils.get_runtime_error(spec.context.id)
+            end
 
-  local neotest_results =
+            if #test_results.UnitTestResult > 1 then
+                test_results = test_results.UnitTestResult
+            end
+
+            intermediate_results = concatenate_tables( intermediate_results,
+            result_utils.create_intermediate_results(test_results))
+        end
+    end
+
+
+    local neotest_results =
     result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
-  return neotest_results
+    return neotest_results
 end
 
 setmetatable(DotnetNeotestAdapter, {
