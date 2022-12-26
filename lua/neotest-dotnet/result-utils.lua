@@ -59,16 +59,13 @@ function M.convert_intermediate_results(intermediate_results, test_nodes)
   local neotest_results = {}
 
   for _, intermediate_result in ipairs(intermediate_results) do
---      print(vim.inspect(intermediate_result))
     for _, node in ipairs(test_nodes) do
       local node_data = node:data()
-      node_data.test = 1
-      -- The test name from the trx file uses the namespace to fully qualify the test name
-      -- To simplify the comparison, it's good enough to just ensure that the last part of the test_name matches the node name (the unqualified display name of the test)
-      print(vim.inspect(node_data))
-      local is_match = #intermediate_result.test_name == #node_data.name
-          and string.find(intermediate_result.test_name, node_data.name, 0, true)
-        or string.find(intermediate_result.test_name, node_data.name, -#node_data.name, true)
+      -- Use the full_name of the test, including namespace
+      local is_match = #intermediate_result.test_name == #node_data.full_name
+          and string.find(intermediate_result.test_name, node_data.full_name, 0, true)
+        or string.find(intermediate_result.test_name, node_data.full_name, -#node_data.full_name, true)
+        
       if is_match then
         neotest_results[node_data.id] = {
           status = intermediate_result.status,

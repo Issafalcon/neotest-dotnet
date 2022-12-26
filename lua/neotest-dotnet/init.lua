@@ -24,21 +24,21 @@ end
 
 
 function get_folder_from_path(str)
-    return str:match("(.*"..lib.files.sep..")")
+  return str:match("(.*"..lib.files.sep..")")
 end
 
 function concatenate_tables(table1, table2)
-    if table1 == null then
-        return table2
-    end
-    if table2 == null then
-        return table1
-    end
-
-    for i=1,#table2 do
-        table1[#table1+1] = table2[i]
-    end
+  if table1 == nil then
+    return table2
+  end
+  if table2 == nil then
     return table1
+  end
+
+  for i=1,#table2 do
+    table1[#table1+1] = table2[i]
+  end
+  return table1
 end
 
 DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
@@ -98,16 +98,16 @@ DotnetNeotestAdapter.discover_positions = function(path)
   local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
 
   local query = [[
-    ;; --Namespaces
-    ;; Matches namespace
-    (namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
+  ;; --Namespaces
+  ;; Matches namespace
+  (namespace_declaration
+  name: (qualified_name) @namespace.name
+  ) @namespace.definition
 
-    ;; Matches file-scoped namespaces
-    (file_scoped_namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
+  ;; Matches file-scoped namespaces
+  (file_scoped_namespace_declaration
+  name: (qualified_name) @namespace.name
+  ) @namespace.definition
   ]] .. framework_queries
 
   local tree = lib.treesitter.parse_positions(path, query, {
@@ -172,7 +172,7 @@ DotnetNeotestAdapter.build_spec = function(args)
       id = position.id,
     },
   }
-print(vim.inspect(command))
+  print(vim.inspect(command))
   if args.strategy == "dap" then
     local send_debug_start, await_debug_start = async.control.channel.oneshot()
     logger.debug("neotest-dotnet: Running tests in debug mode")
@@ -196,39 +196,44 @@ end
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, _, tree)
-    local output_file_prefix = spec.context.results_path
+  local output_file_prefix = spec.context.results_path
 
-    -- Get list of trx files
-    local folder = get_folder_from_path(output_file_prefix):sub(1, -2)
-    local files = lib.files.find(folder)
+  -- Get list of trx files
+  local folder = get_folder_from_path(output_file_prefix):sub(1, -2)
+  local files = lib.files.find(folder)
 
-    local test_nodes = get_test_nodes_data(tree)
+  local test_nodes = get_test_nodes_data(tree)
 
-    local intermediate_results
-    for _, v in ipairs(files) do
-        if(v:find(output_file_prefix, 1, true) == 1) then
-            local parsed_data = trx_utils.parse_trx(v)
-            local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+  for _, node in ipairs(test_nodes) do
+    local full_name = string.gsub(node:data().id, node:data().path.."::", "")
+    full_name = string.gsub(full_name, "::", ".");
+    node:data().full_name = full_name
+  end
 
-            -- No test results. Something went wrong. Check for runtime error
-            if not test_results then
-                return result_utils.get_runtime_error(spec.context.id)
-            end
+  local intermediate_results
+  for _, v in ipairs(files) do
+    if(v:find(output_file_prefix, 1, true) == 1) then
+      local parsed_data = trx_utils.parse_trx(v)
+      local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
 
-            if #test_results.UnitTestResult > 1 then
-                test_results = test_results.UnitTestResult
-            end
+      -- No test results. Something went wrong. Check for runtime error
+      if not test_results then
+        return result_utils.get_runtime_error(spec.context.id)
+      end
+      if #test_results.UnitTestResult > 1 then
+        test_results = test_results.UnitTestResult
+      end
 
-            intermediate_results = concatenate_tables( intermediate_results,
-            result_utils.create_intermediate_results(test_results))
-        end
+      intermediate_results = concatenate_tables( intermediate_results,
+      result_utils.create_intermediate_results(test_results))
     end
+  end
 
 
-    local neotest_results =
-    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+  local neotest_results =
+  result_utils.convert_intermediate_results(intermediate_results, test_nodes)
 
-    return neotest_results
+  return neotest_results
 end
 
 setmetatable(DotnetNeotestAdapter, {
