@@ -22,7 +22,6 @@ local function get_test_nodes_data(tree)
   return test_nodes
 end
 
-
 function get_folder_from_path(str)
   return str:match("(.*"..lib.files.sep..")")
 end
@@ -217,20 +216,23 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
       local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
       local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
 
-      -- No test results. Something went wrong. Check for runtime error
-      if not test_results or not test_definitions then
-        return result_utils.get_runtime_error(spec.context.id)
-      end
-      if #test_results.UnitTestResult > 1 then
-        test_results = test_results.UnitTestResult
-      end
-      if #test_definitions.UnitTest > 1 then
-        test_definitions = test_definitions.UnitTest
-      end
+      if test_results and test_definitions then
+        if #test_results.UnitTestResult > 1 then
+          test_results = test_results.UnitTestResult
+        end
+        if #test_definitions.UnitTest > 1 then
+          test_definitions = test_definitions.UnitTest
+        end
 
-      intermediate_results = concatenate_tables(intermediate_results,
-      result_utils.create_intermediate_results(test_results, test_definitions))
+        intermediate_results = concatenate_tables(intermediate_results,
+          result_utils.create_intermediate_results(test_results, test_definitions))
+      end
     end
+  end
+
+  -- No test results. Something went wrong. Check for runtime error
+  if not intermediate_results then
+    return result_utils.get_runtime_error(spec.context.id)
   end
 
   local neotest_results =
