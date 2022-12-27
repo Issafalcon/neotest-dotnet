@@ -172,7 +172,7 @@ DotnetNeotestAdapter.build_spec = function(args)
       id = position.id,
     },
   }
-  print(vim.inspect(command))
+
   if args.strategy == "dap" then
     local send_debug_start, await_debug_start = async.control.channel.oneshot()
     logger.debug("neotest-dotnet: Running tests in debug mode")
@@ -215,20 +215,23 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
     if(v:find(output_file_prefix, 1, true) == 1) then
       local parsed_data = trx_utils.parse_trx(v)
       local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+      local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
 
       -- No test results. Something went wrong. Check for runtime error
-      if not test_results then
+      if not test_results or not test_definitions then
         return result_utils.get_runtime_error(spec.context.id)
       end
       if #test_results.UnitTestResult > 1 then
         test_results = test_results.UnitTestResult
       end
+      if #test_definitions.UnitTest > 1 then
+        test_definitions = test_definitions.UnitTest
+      end
 
-      intermediate_results = concatenate_tables( intermediate_results,
-      result_utils.create_intermediate_results(test_results))
+      intermediate_results = concatenate_tables(intermediate_results,
+      result_utils.create_intermediate_results(test_results, test_definitions))
     end
   end
-
 
   local neotest_results =
   result_utils.convert_intermediate_results(intermediate_results, test_nodes)
