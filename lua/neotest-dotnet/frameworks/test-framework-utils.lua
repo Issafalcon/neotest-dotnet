@@ -5,11 +5,11 @@ local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils"
 local logger = require("neotest.logging")
 local async = require("neotest.async")
 
-local M = {}
+local FrameworkUtils = {}
 
 --- Returns the utils module for the test framework being used, given the current file
 ---@return FrameworkUtils
-function M.get_test_framework_utils(source, custom_attribute_args)
+function FrameworkUtils.get_test_framework_utils(source, custom_attribute_args)
   local xunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "xunit")
   local mstest_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "mstest")
   local nunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "nunit")
@@ -61,7 +61,7 @@ function M.get_test_framework_utils(source, custom_attribute_args)
   end
 end
 
-function M.get_match_type(captured_nodes)
+function FrameworkUtils.get_match_type(captured_nodes)
   if captured_nodes["test.name"] then
     return "test"
   end
@@ -73,7 +73,7 @@ function M.get_match_type(captured_nodes)
   end
 end
 
-M.position_id = function(position, parents)
+function FrameworkUtils.position_id(position, parents)
   local original_id = table.concat(
     vim.tbl_flatten({
       position.path,
@@ -109,8 +109,8 @@ end
 ---@param source any
 ---@param captured_nodes any
 ---@return table
-M.build_position = function(file_path, source, captured_nodes)
-  local match_type = M.get_match_type(captured_nodes)
+function FrameworkUtils.build_position(file_path, source, captured_nodes)
+  local match_type = FrameworkUtils.get_match_type(captured_nodes)
 
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
   local definition = captured_nodes[match_type .. ".definition"]
@@ -125,8 +125,8 @@ M.build_position = function(file_path, source, captured_nodes)
     return node
   end
 
-  return M.get_test_framework_utils(source)
+  return FrameworkUtils.get_test_framework_utils(source)
     .build_parameterized_test_positions(node, source, captured_nodes, match_type)
 end
 
-return M
+return FrameworkUtils

@@ -70,7 +70,7 @@ DotnetNeotestAdapter._position_id = function(...)
   return framework_utils.position_id(...)
 end
 
----Implementation of core neotest function.
+--- Implementation of core neotest function.
 ---@param path any
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
@@ -190,6 +190,16 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
   if #test_results.UnitTestResult > 1 then
     test_results = test_results.UnitTestResult
   end
+
+  logger.info(
+    "neotest-dotnet: Found "
+      .. #test_results
+      .. " test results when parsing TRX file: "
+      .. output_file
+  )
+
+  logger.debug("neotest-dotnet: TRX Results Output: ")
+  logger.debug(test_results)
 
   local test_nodes = get_test_nodes_data(tree)
   local intermediate_results = result_utils.create_intermediate_results(test_results)

@@ -1,3 +1,5 @@
+local logger = require("neotest.logging")
+
 ---@type FrameworkUtils
 local M = {}
 
@@ -12,6 +14,11 @@ end
 ---@param match_type string The type of node that was matched by the TS query
 ---@return table
 M.build_parameterized_test_positions = function(base_node, source, captured_nodes, match_type)
+  logger.debug("neotest-dotnet(MS-Test Utils): Building parameterized test positions from source")
+  logger.debug("neotest-dotnet(MS-Test Utils): Base node: ")
+  logger.debug(base_node)
+
+  logger.debug("neotest-dotnet(MS-Test Utils): Match Type: " .. match_type)
   local param_query = vim.treesitter.parse_query(
     "c_sharp",
     [[
@@ -45,6 +52,9 @@ M.build_parameterized_test_positions = function(base_node, source, captured_node
       range = { args_node:range() },
     })
   end
+
+  logger.debug("neotest-dotnet(MS-Test Utils): Built parameterized test positions: ")
+  logger.debug(nodes)
 
   return nodes
 end
