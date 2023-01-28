@@ -50,7 +50,7 @@ end
 --- in order for neotest to be able to attach to it.
 ---@param cmd string The dotnet test comman to run
 ---@param strategy_cb function The callback to run when the test process is ready to attach to:
----   Signature format is function(process_id), where process_id is the ID of the dotnet test process---@param _ 
+---   Signature format is function(process_id), where process_id is the ID of the dotnet test process---@param _
 M.start_debuggable_test = function(cmd, strategy_cb)
   local initial_win_id = vim.fn.win_getid()
   vim.api.nvim_create_buf(false, true)
@@ -62,8 +62,7 @@ M.start_debuggable_test = function(cmd, strategy_cb)
     on_stdout = function(_, return_val)
       wait_until_attachable(return_val, initial_win_id, strategy_cb)
     end,
-    on_stderr = function(error, return_val)
-    end,
+    on_stderr = function(error, return_val) end,
     on_exit = function()
       waitingForDebugger = false
       dotnet_test_pid = nil
