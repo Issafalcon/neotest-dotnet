@@ -11,7 +11,7 @@ test:
 # installs `mini.nvim`, used for both the tests and documentation.
 deps:
 	@mkdir -p deps
-	git clone --depth 1 https://github.com/echasnovski/mini.nvim deps/mini.nvim
+	git clone --depth 1 https://github.com/echasnovski/mini.doc.git deps/mini.doc.nvim
 	git clone --depth 1 https://github.com/nvim-neotest/neotest.git deps/neotest
 	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim.git deps/plenary
 	git clone --depth 1 https://github.com/nvim-treesitter/nvim-treesitter.git deps/nvim-treesitter
@@ -21,7 +21,10 @@ test-ci: deps test
 
 # generates the documentation.
 documentation:
-	nvim --headless --noplugin -u ./scripts/minimal_init.lua -c "lua require('mini.doc').generate()" -c "qa!"
+	nvim --headless --noplugin -u ./scripts/minimal_init.lua \
+		-c "lua require('mini.doc').setup()" \
+		-c "lua require('mini.doc').generate()" \
+		-c "qa!"
 
 # installs deps before running the documentation generation, useful for the CI.
 documentation-ci: deps documentation
