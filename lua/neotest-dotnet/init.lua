@@ -6,6 +6,7 @@ local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
 local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
+local build_spec_utils = require("neotest-dotnet.build-spec-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
@@ -102,34 +103,24 @@ DotnetNeotestAdapter.discover_positions = function(path)
 end
 
 DotnetNeotestAdapter.build_spec = function(args)
+  logger.debug("neotest-dotnet: Building spec using args: ")
+  logger.debug(args)
   local position = args.tree:data()
+
   local results_path = async.fn.tempname() .. ".trx"
-  local fqn
-  local segments = vim.split(position.id, "::")
-  for _, segment in ipairs(segments) do
-    if not (vim.fn.has("win32") and segment == "C") then
-      if not string.find(segment, ".cs$") then
-        -- Remove any test parameters as these don't work well with the dotnet filter formatting.
-        segment = segment:gsub("%b()", "")
-        fqn = fqn and fqn .. "." .. segment or segment
-      end
-    end
-  end
 
   local project_dir = DotnetNeotestAdapter.root(position.path)
 
   -- This returns the directory of the .csproj or .fsproj file. The dotnet command works with the directory name, rather
   -- than the full path to the file.
-  local test_root = project_dir
+  local test_root = project_dir or position.path or ""
 
   local filter = ""
-  if position.type == "namespace" then
-    filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
-  end
-  if position.type == "test" then
+  if position.type == "namespace" or position.type == "test" then
     -- Allow a more lenient 'contains' match for the filter, accepting tradeoff that it may
     -- also run tests with similar names. This allows us to run parameterized tests individually
     -- or as a group.
+    local fqn = build_spec_utils.build_test_fqn(position.id)
     filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
   end
 
@@ -145,6 +136,9 @@ DotnetNeotestAdapter.build_spec = function(args)
   }
 
   local command_string = table.concat(command, " ")
+
+  logger.debug("neotest-dotnet: Running tests using command: " .. command_string)
+
   local spec = {
     command = command_string,
     context = {
@@ -156,12 +150,12 @@ DotnetNeotestAdapter.build_spec = function(args)
 
   if args.strategy == "dap" then
     local send_debug_start, await_debug_start = async.control.channel.oneshot()
-    logger.debug("neotest-dotnet: Running tests in debug mode")
+    logger.info("neotest-dotnet: Running tests in debug mode")
 
     dap_utils.start_debuggable_test(command_string, function(dotnet_test_pid)
       spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
       spec.command = nil
-      logger.debug("neotest-dotnet: Sending debug start")
+      logger.info("neotest-dotnet: Sending debug start")
       send_debug_start()
     end)
 
