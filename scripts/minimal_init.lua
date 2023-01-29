@@ -20,12 +20,6 @@ if #vim.api.nvim_list_uis() == 0 then
   vim.cmd("runtime lua/mini/doc.lua")
 
   -- Setup test plugin dependencies
-  require("neotest").setup({
-    adapters = {
-      require("neotest-dotnet"),
-    },
-  })
-
   require("nvim-treesitter.configs").setup({
     ensure_installed = "c_sharp",
     sync_install = true,

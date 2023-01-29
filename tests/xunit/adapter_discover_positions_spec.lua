@@ -7,6 +7,12 @@ A = function(...)
 end
 
 describe("discover_positions", function()
+  require("neotest").setup({
+    adapters = {
+      require("neotest-dotnet"),
+    },
+  })
+
   async.it("should discover tests with inline parameters", function()
     local spec_file = "./tests/xunit/specs/basic_tests.cs"
     local spec_file_name = "basic_tests.cs"

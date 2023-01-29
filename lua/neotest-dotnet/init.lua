@@ -11,6 +11,7 @@ local build_spec_utils = require("neotest-dotnet.build-spec-utils")
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
 local custom_attribute_args
+local discovery_root = "project"
 
 local function get_test_nodes_data(tree)
   local test_nodes = {}
@@ -23,7 +24,13 @@ local function get_test_nodes_data(tree)
   return test_nodes
 end
 
-DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
+DotnetNeotestAdapter.root = function(path)
+  if discovery_root == "solution" then
+    return lib.files.match_root_pattern("*.sln")(path)
+  else
+    return lib.files.match_root_pattern("*.csproj", "*.fsproj")(path)
+  end
+end
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
   if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
@@ -211,6 +218,10 @@ setmetatable(DotnetNeotestAdapter, {
     end
     if type(opts.custom_attributes) == "table" then
       custom_attribute_args = opts.custom_attributes
+    end
+    if type(opts.discovery_root) == "string" then
+      discovery_root = opts.discovery_root
+      print(discovery_root)
     end
     return DotnetNeotestAdapter
   end,
