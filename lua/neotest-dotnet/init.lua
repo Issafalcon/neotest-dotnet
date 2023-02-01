@@ -112,64 +112,32 @@ end
 DotnetNeotestAdapter.build_spec = function(args)
   logger.debug("neotest-dotnet: Building spec using args: ")
   logger.debug(args)
-  local position = args.tree:data()
 
-  local results_path = async.fn.tempname() .. ".trx"
-
-  local project_dir = DotnetNeotestAdapter.root(position.path)
-
-  -- This returns the directory of the .csproj or .fsproj file. The dotnet command works with the directory name, rather
-  -- than the full path to the file.
-  local test_root = project_dir or position.path or ""
-
-  local filter = ""
-  if position.type == "namespace" or position.type == "test" then
-    -- Allow a more lenient 'contains' match for the filter, accepting tradeoff that it may
-    -- also run tests with similar names. This allows us to run parameterized tests individually
-    -- or as a group.
-    local fqn = build_spec_utils.build_test_fqn(position.id)
-    filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
-  end
-
-  local command = {
-    "dotnet",
-    "test",
-    test_root,
-    filter,
-    "--results-directory",
-    vim.fn.fnamemodify(results_path, ":h"),
-    "--logger",
-    '"trx;logfilename=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
-  }
-
-  local command_string = table.concat(command, " ")
-
-  logger.debug("neotest-dotnet: Running tests using command: " .. command_string)
-
-  local spec = {
-    command = command_string,
-    context = {
-      results_path = results_path,
-      file = position.path,
-      id = position.id,
-    },
-  }
+  local specs = build_spec_utils.create_specs(args.tree)
 
   if args.strategy == "dap" then
-    local send_debug_start, await_debug_start = async.control.channel.oneshot()
-    logger.info("neotest-dotnet: Running tests in debug mode")
+    if #specs > 1 then
+      logger.warn(
+        "neotest-dotnet: DAP strategy does not support multiple test projects. Please debug test projects or individual tests. Falling back to using default strategy."
+      )
+      return specs
+    else
+      local spec = specs[1]
+      local send_debug_start, await_debug_start = async.control.channel.oneshot()
+      logger.info("neotest-dotnet: Running tests in debug mode")
 
-    dap_utils.start_debuggable_test(command_string, function(dotnet_test_pid)
-      spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
-      spec.command = nil
-      logger.info("neotest-dotnet: Sending debug start")
-      send_debug_start()
-    end)
+      dap_utils.start_debuggable_test(spec.command, function(dotnet_test_pid)
+        spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
+        spec.command = nil
+        logger.info("neotest-dotnet: Sending debug start")
+        send_debug_start()
+      end)
 
-    await_debug_start()
+      await_debug_start()
+    end
   end
 
-  return spec
+  return specs
 end
 
 ---@async
