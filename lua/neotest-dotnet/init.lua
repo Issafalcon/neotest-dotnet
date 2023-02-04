@@ -109,11 +109,17 @@ DotnetNeotestAdapter.discover_positions = function(path)
   return tree
 end
 
+---@summary Neotest core interface method: Build specs for running tests
+---@param args neotest.RunArgs
+---@return nil | neotest.RunSpec | neotest.RunSpec[]
 DotnetNeotestAdapter.build_spec = function(args)
   logger.debug("neotest-dotnet: Building spec using args: ")
   logger.debug(args)
 
   local specs = build_spec_utils.create_specs(args.tree)
+
+  logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
+  logger.debug(specs)
 
   if args.strategy == "dap" then
     if #specs > 1 then
@@ -171,10 +177,20 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
   logger.debug(test_results)
 
   local test_nodes = get_test_nodes_data(tree)
+
+  logger.debug("neotest-dotnet: Test Nodes: ")
+  logger.debug(test_nodes)
+
   local intermediate_results = result_utils.create_intermediate_results(test_results)
+
+  logger.debug("neotest-dotnet: Intermediate Results: ")
+  logger.debug(intermediate_results)
 
   local neotest_results =
     result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+
+  logger.debug("neotest-dotnet: Neotest Results after conversion of Intermediate Results: ")
+  logger.debug(neotest_results)
 
   return neotest_results
 end

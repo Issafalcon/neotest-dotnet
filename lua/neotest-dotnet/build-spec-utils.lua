@@ -16,7 +16,7 @@ function BuildSpecUtils.build_test_fqn(position_id)
   local fqn
 
   for _, segment in ipairs(segments) do
-    if not (vim.fn.has("win32") and segment == "C") then
+    if not (async.fn.has("win32") and segment == "C") then
       if not string.find(segment, ".cs$") then
         -- Remove any test parameters as these don't work well with the dotnet filter formatting.
         segment = segment:gsub("%b()", "")
@@ -28,14 +28,20 @@ function BuildSpecUtils.build_test_fqn(position_id)
   return fqn
 end
 
-function BuildSpecUtils.create_single_spec(position, filter_arg, additional_args)
+---Creates a single spec for neotest to run using the dotnet test CLI
+---@param position table The position value of the neotest tree node
+---@param proj_root string The path of the project root for this particular position
+---@param filter_arg string The filter argument to pass to the dotnet test command
+---@param additional_args string Any additional arguments to pass to the dotnet test command
+---@return
+function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, additional_args)
   local results_path = async.fn.tempname() .. ".trx"
   filter_arg = filter_arg or ""
 
   local command = {
     "dotnet",
     "test",
-    position.path,
+    proj_root,
     filter_arg,
     "--results-directory",
     vim.fn.fnamemodify(results_path, ":h"),
@@ -61,7 +67,7 @@ function BuildSpecUtils.create_specs(tree, specs)
   local position = tree:data()
   specs = specs or {}
 
-  -- Borrowed from https://github.com/nvim-neotest/neotest/blob/392808a91d6ee28d27cbfb93c9fd9781759b5d00/lua/neotest/lib/file/init.lua#L341
+  -- Adapted from https://github.com/nvim-neotest/neotest/blob/392808a91d6ee28d27cbfb93c9fd9781759b5d00/lua/neotest/lib/file/init.lua#L341
   if position.type == "dir" then
     -- Check to see if we are in a project root
     local proj_files = async.fn.glob(Path:new(position.path, "*.csproj").filename, true, true)
@@ -72,7 +78,7 @@ function BuildSpecUtils.create_specs(tree, specs)
 
       for _, p in ipairs(async.fn.glob(Path:new(position.path, "*.csproj").filename, true, true)) do
         if lib.files.exists(p) then
-          local spec = BuildSpecUtils.create_single_spec(position)
+          local spec = BuildSpecUtils.create_single_spec(position, position.path)
           table.insert(specs, spec)
         end
       end
@@ -90,14 +96,17 @@ function BuildSpecUtils.create_specs(tree, specs)
     local fqn = BuildSpecUtils.build_test_fqn(position.id)
     local filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
 
-    local spec = BuildSpecUtils.create_single_spec(position, filter)
+    local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
+    local spec = BuildSpecUtils.create_single_spec(position, proj_root, filter)
+    table.insert(specs, spec)
+  elseif position.type == "file" then
+    local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
+
+    local spec = BuildSpecUtils.create_single_spec(position, proj_root)
     table.insert(specs, spec)
   end
 
-  logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
-  logger.debug(specs)
-
-  return specs
+  return #specs < 0 and nil or specs
 end
 
 return BuildSpecUtils

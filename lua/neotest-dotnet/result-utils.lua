@@ -68,6 +68,7 @@ function M.convert_intermediate_results(intermediate_results, test_nodes)
 
       local is_dynamically_parameterized = #node:children() == 0
         and not string.find(node_data.name, "%(.*%)")
+
       if is_dynamically_parameterized then
         -- Remove dynamically generated arguments as they are not in node_data
         result_test_name = string.gsub(result_test_name, "%(.*%)", "")
@@ -76,6 +77,7 @@ function M.convert_intermediate_results(intermediate_results, test_nodes)
       local is_match = #result_test_name == #node_data.name
           and string.find(result_test_name, node_data.name, 0, true)
         or string.find(result_test_name, node_data.name, -#node_data.name, true)
+
       if is_match then
         neotest_results[node_data.id] = {
           status = intermediate_result.status,
