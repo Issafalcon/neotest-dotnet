@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.0.0...v1.1.0) (2023-02-05)
+
+
+### Features
+
+* **sln-root:** Creating multiple specs for direcotory tree ([e6d91ed](https://github.com/Issafalcon/neotest-dotnet/commit/e6d91eda40c56e7fd7e7257da9c3204eab5d11f2))
+* **sln-root:** Fix for file type position and more unit tests ([0c76827](https://github.com/Issafalcon/neotest-dotnet/commit/0c76827f948c25d45b58339d3e38e1d90502ab50))
+
+
+### Bug Fixes
+
+* **sln-root-dir:** Provides option to determine the root dir ([0905484](https://github.com/Issafalcon/neotest-dotnet/commit/0905484bda666c33bfbf7ae592cefd45e9543742))
+* **sln-test-runs:** Fixing the error when running entire test suite ([e1697f5](https://github.com/Issafalcon/neotest-dotnet/commit/e1697f548b1b31c2a339a96bf29c6d10b31485db))
+
 ## 1.0.0 (2023-01-28)
 
 
