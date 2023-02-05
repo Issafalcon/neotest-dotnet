@@ -2,12 +2,7 @@ local async = require("plenary.async.tests")
 local mock = require("luassert.mock")
 local stub = require("luassert.stub")
 local lib = require("neotest.lib")
-local neotest_async = require("neotest.async")
 local Tree = require("neotest.types").Tree
-
-A = function(...)
-  print(vim.inspect(...))
-end
 
 describe("build_test_fqn windows_os", function()
   local BuildSpecUtils = require("neotest-dotnet.build-spec-utils")
@@ -137,17 +132,6 @@ describe("create_specs", function()
   async.it("should return the correct specs when the position is 'namespace' type", function()
     local expected_specs = {
       {
-        command = 'dotnet test /home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1  --results-directory /tmp/nvim.issafalcon/wFuRtz --logger "trx;logfilename=0.trx"',
-        context = {
-          file = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
-          id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs::xunit.testproj1",
-          results_path = "/tmp/nvim.issafalcon/wFuRtz/0.trx",
-        },
-      },
-    }
-
-    local expected_specs = {
-      {
         command = "dotnet test "
           .. test_root_path
           .. ' --filter FullyQualifiedName~"xunit.testproj1"'
@@ -195,4 +179,139 @@ describe("create_specs", function()
     assert.equal(#expected_specs, #result)
     assert_spec_matches(expected_specs[1], result[1])
   end)
+
+  async.it("should return the correct specs when the position is 'test' type", function()
+    local expected_specs = {
+      {
+        command = "dotnet test "
+          .. test_root_path
+          .. ' --filter FullyQualifiedName~"xunit.testproj1.UnitTest1.Test1"'
+          .. ' --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
+        context = {
+          file = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
+          id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs::xunit.testproj1::UnitTest1::Test1",
+          results_path = test_result_path .. ".trx",
+        },
+      },
+    }
+
+    local tree = Tree.from_list({
+      {
+        id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs::xunit.testproj1::UnitTest1::Test1",
+        name = "Test1",
+        path = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
+        range = { 4, 1, 8, 2 },
+        type = "test",
+      },
+    }, function(pos)
+      return pos.id
+    end)
+
+    local result = BuildSpecUtils.create_specs(tree)
+
+    assert.equal(#expected_specs, #result)
+    assert_spec_matches(expected_specs[1], result[1])
+  end)
+
+  -- Caters for situation where root directory contains a .sln file, and there are nested dirs with .csproj files in them
+  async.it(
+    "should return multiple specs when the position is 'dir' type and contains nested project roots",
+    function()
+      local solution_dir = vim.fn.expand("%:p:h") .. "/tests/solution_dir"
+      local project1_dir = vim.fn.expand("%:p:h") .. "/tests/solution_dir/project1"
+      local project2_dir = vim.fn.expand("%:p:h") .. "/tests/solution_dir/project2"
+
+      local expected_specs = {
+        {
+          command = "dotnet test "
+            .. project1_dir
+            .. '  --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
+          context = {
+            file = project1_dir,
+            id = project1_dir,
+            results_path = test_result_path .. ".trx",
+          },
+        },
+        {
+          command = "dotnet test "
+            .. project2_dir
+            .. '  --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
+          context = {
+            file = project2_dir,
+            id = project2_dir,
+            results_path = test_result_path .. ".trx",
+          },
+        },
+      }
+
+      local tree = Tree.from_list({
+        {
+          id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit",
+          name = "xunit",
+          path = solution_dir,
+          type = "dir",
+        },
+        {
+          {
+            id = project1_dir,
+            name = "testproj1",
+            path = project1_dir,
+            type = "dir",
+          },
+        },
+        {
+          {
+            id = project2_dir,
+            name = "testproj2",
+            path = project2_dir,
+            type = "dir",
+          },
+        },
+      }, function(pos)
+        return pos.id
+      end)
+
+      local result = BuildSpecUtils.create_specs(tree)
+
+      assert.equal(#expected_specs, #result)
+      assert_spec_matches(expected_specs[1], result[1])
+      assert_spec_matches(expected_specs[2], result[2])
+    end
+  )
+
+  async.it(
+    "should return single spec when the position is 'dir' type and contains a single project root",
+    function()
+      local project1_dir = vim.fn.expand("%:p:h") .. "/tests/solution_dir/project1"
+
+      local expected_specs = {
+        {
+          command = "dotnet test "
+            .. project1_dir
+            .. '  --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
+          context = {
+            file = project1_dir,
+            id = project1_dir,
+            results_path = test_result_path .. ".trx",
+          },
+        },
+      }
+
+      local tree = Tree.from_list({
+        {
+          id = project1_dir,
+          name = "testproj1",
+          path = project1_dir,
+          type = "dir",
+        },
+      }, function(pos)
+        return pos.id
+      end)
+
+      local result = BuildSpecUtils.create_specs(tree)
+
+      assert.equal(#expected_specs, #result)
+      assert_spec_matches(expected_specs[1], result[1])
+    end
+  )
 end)

@@ -65,6 +65,7 @@ end
 
 function BuildSpecUtils.create_specs(tree, specs)
   local position = tree:data()
+
   specs = specs or {}
 
   -- Adapted from https://github.com/nvim-neotest/neotest/blob/392808a91d6ee28d27cbfb93c9fd9781759b5d00/lua/neotest/lib/file/init.lua#L341
@@ -76,7 +77,7 @@ function BuildSpecUtils.create_specs(tree, specs)
     if #proj_files >= 1 then
       logger.debug(proj_files)
 
-      for _, p in ipairs(async.fn.glob(Path:new(position.path, "*.csproj").filename, true, true)) do
+      for _, p in ipairs(proj_files) do
         if lib.files.exists(p) then
           local spec = BuildSpecUtils.create_single_spec(position, position.path)
           table.insert(specs, spec)

@@ -113,8 +113,8 @@ end
 ---@param args neotest.RunArgs
 ---@return nil | neotest.RunSpec | neotest.RunSpec[]
 DotnetNeotestAdapter.build_spec = function(args)
-  logger.debug("neotest-dotnet: Building spec using args: ")
-  logger.debug(args)
+  logger.debug("neotest-dotnet: Creating specs from Tree (as list): ")
+  logger.debug(args.tree:to_list())
 
   local specs = build_spec_utils.create_specs(args.tree)
 

@@ -2,6 +2,7 @@
 <img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Issafalcon/neotest-dotnet/main.yml?label=main&style=for-the-badge">
 <img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/Issafalcon/neotest-dotnet?style=for-the-badge">
 </p>
+
 # Neotest .NET
 
 Neotest adapter for dotnet tests
@@ -128,3 +129,39 @@ the adapter will lump all these tests together in one.
 - F# is currently unsupported due to the fact there is no complete tree-sitter parser for F# available as yet (<https://github.com/baronfel/tree-sitter-fsharp>)
 
 3. As mentioned in the **Debugging** section, there are some discrepancies in test output at the moment.
+
+# Contributing
+
+Any help on this plugin would be very much appreciated. It has turned out to be a more significant effort to account for all the Microsoft `dotnet test` quirks
+and various differences between each test runner, than I had initially imagined.
+
+## First Steps
+
+If you have a use case that the adapter isn't quite able to cover, a more detailed understanding of why can be achieved by following these steps:
+
+1. Setting the `loglevel` property in your `neotest` setup config to `1` to reveal all the debug logs from neotest-dotnet
+2. Open up your tests file and do what your normally do to run the tests
+3. Look through the neotest log files for logs prefixed with `neotest-dotnet` (can be found by running the command `echo stdpath("log")`)
+4. You should be able to piece together how the nodes in the neotest summary window are created (Using logs from tests that are "Found")
+- The Tree for each test run is printed as a list (search for `Creating specs from tree`) from each test run
+- The individual specs usually follow after in the log list, showing the command and context for each spec
+- `TRX Results Output` can be searched to find out how neotest-dotnet is parsing the test output files
+- Final results are tied back to the original list of discovered tests by using a set of conversion functions:
+ - `Test Nodes` are logged - these are taken from the original node tree list, and filtered to include only the test nodes and their children (if any)
+ - `Intermediate Results` are obtained and logged by parsing the TRX output into a list of test results
+ - The test nodes and intermediate results are passed to a function to correlate them with each other. If the test names in the nodes match the test names from the intermediate results, a final neotest-result for that test is returned and matched to the original test position from the very initial tree of nodes
+
+Usually, if tests are not appearing in the `neotest` summary window, or are failing to be discovered by individual or grouped test runs, there will usually be an issue with one of the above steps. Carefully examining the names in the original node list and the names of the tests in each of the result lists, usually highighlights a mismatch.
+
+5. Narrow down the function where you think the issue is.
+6. Look through the unit tests (named by convention using `<filename_spec.lua>`) and check if there is a test case covering the use case for your situation
+7. Write a test case that would enable your use case to be satisfied
+8. See that the test fails
+9. Try to fix the issue until the test passes
+
+## Running Tests
+
+To run the plenary tests from CLI, in the root folder, run 
+```
+make test
+```
