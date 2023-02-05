@@ -6,10 +6,12 @@ local trx_utils = require("neotest-dotnet.trx-utils")
 local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
 local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
+local build_spec_utils = require("neotest-dotnet.build-spec-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
 local custom_attribute_args
+local discovery_root = "project"
 
 local function get_test_nodes_data(tree)
   local test_nodes = {}
@@ -22,7 +24,13 @@ local function get_test_nodes_data(tree)
   return test_nodes
 end
 
-DotnetNeotestAdapter.root = lib.files.match_root_pattern("*.csproj", "*.fsproj")
+DotnetNeotestAdapter.root = function(path)
+  if discovery_root == "solution" then
+    return lib.files.match_root_pattern("*.sln")(path)
+  else
+    return lib.files.match_root_pattern("*.csproj", "*.fsproj")(path)
+  end
+end
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
   if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
@@ -101,74 +109,41 @@ DotnetNeotestAdapter.discover_positions = function(path)
   return tree
 end
 
+---@summary Neotest core interface method: Build specs for running tests
+---@param args neotest.RunArgs
+---@return nil | neotest.RunSpec | neotest.RunSpec[]
 DotnetNeotestAdapter.build_spec = function(args)
-  local position = args.tree:data()
-  local results_path = async.fn.tempname() .. ".trx"
-  local fqn
-  local segments = vim.split(position.id, "::")
-  for _, segment in ipairs(segments) do
-    if not (vim.fn.has("win32") and segment == "C") then
-      if not string.find(segment, ".cs$") then
-        -- Remove any test parameters as these don't work well with the dotnet filter formatting.
-        segment = segment:gsub("%b()", "")
-        fqn = fqn and fqn .. "." .. segment or segment
-      end
+  logger.debug("neotest-dotnet: Creating specs from Tree (as list): ")
+  logger.debug(args.tree:to_list())
+
+  local specs = build_spec_utils.create_specs(args.tree)
+
+  logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
+  logger.debug(specs)
+
+  if args.strategy == "dap" then
+    if #specs > 1 then
+      logger.warn(
+        "neotest-dotnet: DAP strategy does not support multiple test projects. Please debug test projects or individual tests. Falling back to using default strategy."
+      )
+      return specs
+    else
+      local spec = specs[1]
+      local send_debug_start, await_debug_start = async.control.channel.oneshot()
+      logger.info("neotest-dotnet: Running tests in debug mode")
+
+      dap_utils.start_debuggable_test(spec.command, function(dotnet_test_pid)
+        spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
+        spec.command = nil
+        logger.info("neotest-dotnet: Sending debug start")
+        send_debug_start()
+      end)
+
+      await_debug_start()
     end
   end
 
-  local project_dir = DotnetNeotestAdapter.root(position.path)
-
-  -- This returns the directory of the .csproj or .fsproj file. The dotnet command works with the directory name, rather
-  -- than the full path to the file.
-  local test_root = project_dir
-
-  local filter = ""
-  if position.type == "namespace" then
-    filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
-  end
-  if position.type == "test" then
-    -- Allow a more lenient 'contains' match for the filter, accepting tradeoff that it may
-    -- also run tests with similar names. This allows us to run parameterized tests individually
-    -- or as a group.
-    filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
-  end
-
-  local command = {
-    "dotnet",
-    "test",
-    test_root,
-    filter,
-    "--results-directory",
-    vim.fn.fnamemodify(results_path, ":h"),
-    "--logger",
-    '"trx;logfilename=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
-  }
-
-  local command_string = table.concat(command, " ")
-  local spec = {
-    command = command_string,
-    context = {
-      results_path = results_path,
-      file = position.path,
-      id = position.id,
-    },
-  }
-
-  if args.strategy == "dap" then
-    local send_debug_start, await_debug_start = async.control.channel.oneshot()
-    logger.debug("neotest-dotnet: Running tests in debug mode")
-
-    dap_utils.start_debuggable_test(command_string, function(dotnet_test_pid)
-      spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
-      spec.command = nil
-      logger.debug("neotest-dotnet: Sending debug start")
-      send_debug_start()
-    end)
-
-    await_debug_start()
-  end
-
-  return spec
+  return specs
 end
 
 ---@async
@@ -202,10 +177,20 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
   logger.debug(test_results)
 
   local test_nodes = get_test_nodes_data(tree)
+
+  logger.debug("neotest-dotnet: Test Nodes: ")
+  logger.debug(test_nodes)
+
   local intermediate_results = result_utils.create_intermediate_results(test_results)
+
+  logger.debug("neotest-dotnet: Intermediate Results: ")
+  logger.debug(intermediate_results)
 
   local neotest_results =
     result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+
+  logger.debug("neotest-dotnet: Neotest Results after conversion of Intermediate Results: ")
+  logger.debug(neotest_results)
 
   return neotest_results
 end
@@ -217,6 +202,10 @@ setmetatable(DotnetNeotestAdapter, {
     end
     if type(opts.custom_attributes) == "table" then
       custom_attribute_args = opts.custom_attributes
+    end
+    if type(opts.discovery_root) == "string" then
+      discovery_root = opts.discovery_root
+      print(discovery_root)
     end
     return DotnetNeotestAdapter
   end,
