@@ -1,6 +1,10 @@
 <p align="center">
-<img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Issafalcon/neotest-dotnet/main.yml?label=main&style=for-the-badge">
-<img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/Issafalcon/neotest-dotnet?style=for-the-badge">
+<a href="https://github.com/Issafalcon/neotest-dotnet/actions/workflows/main.yml">
+  <img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Issafalcon/neotest-dotnet/main.yml?label=main&style=for-the-badge">
+</a>
+<a href="https://github.com/Issafalcon/neotest-dotnet/releases">
+  <img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/Issafalcon/neotest-dotnet?style=for-the-badge">
+</a>
 </p>
 
 # Neotest .NET
