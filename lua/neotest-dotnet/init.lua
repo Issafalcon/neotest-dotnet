@@ -129,17 +129,17 @@ DotnetNeotestAdapter.build_spec = function(args)
       return specs
     else
       local spec = specs[1]
-      local send_debug_start, await_debug_start = async.control.channel.oneshot()
+      local debug_future = async.control.future()
       logger.info("neotest-dotnet: Running tests in debug mode")
 
       dap_utils.start_debuggable_test(spec.command, function(dotnet_test_pid)
         spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
         spec.command = nil
         logger.info("neotest-dotnet: Sending debug start")
-        send_debug_start()
+        debug_future.set()
       end)
 
-      await_debug_start()
+      debug_future.wait()
     end
   end
 
