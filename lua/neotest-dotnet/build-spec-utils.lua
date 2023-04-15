@@ -2,6 +2,7 @@ local logger = require("neotest.logging")
 local lib = require("neotest.lib")
 local Path = require("plenary.path")
 local async = require("neotest.async")
+local neotest_node_tree_utils = require("neotest-dotnet.neotest-node-tree-utils")
 
 local BuildSpecUtils = {}
 
@@ -12,18 +13,9 @@ local BuildSpecUtils = {}
 ---@param position_id string The position id to parse.
 ---@return string The fully qualified name of the test to be passed to the "dotnet test" command
 function BuildSpecUtils.build_test_fqn(position_id)
-  local segments = vim.split(position_id, "::")
-  local fqn
-
-  for _, segment in ipairs(segments) do
-    if not (async.fn.has("win32") and segment == "C") then
-      if not string.find(segment, ".cs$") then
-        -- Remove any test parameters as these don't work well with the dotnet filter formatting.
-        segment = segment:gsub("%b()", "")
-        fqn = fqn and fqn .. "." .. segment or segment
-      end
-    end
-  end
+  local fqn = neotest_node_tree_utils.get_qualified_test_name_from_id(position_id)
+  -- Remove any test parameters as these don't work well with the dotnet filter formatting.
+  fqn = fqn:gsub("%b()", "")
 
   return fqn
 end

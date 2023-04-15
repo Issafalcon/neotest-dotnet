@@ -7,22 +7,12 @@ local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
 local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
 local build_spec_utils = require("neotest-dotnet.build-spec-utils")
+local neotest_node_tree_utils = require("neotest-dotnet.neotest-node-tree-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
 local custom_attribute_args
 local discovery_root = "project"
-
-local function get_test_nodes_data(tree)
-  local test_nodes = {}
-  for _, node in tree:iter_nodes() do
-    if node:data().type == "test" then
-      table.insert(test_nodes, node)
-    end
-  end
-
-  return test_nodes
-end
 
 DotnetNeotestAdapter.root = function(path)
   if discovery_root == "solution" then
@@ -88,14 +78,23 @@ DotnetNeotestAdapter.discover_positions = function(path)
 
   local query = [[
     ;; --Namespaces
-    ;; Matches namespace
+    ;; Matches namespace with a '.' in the name
     (namespace_declaration
         name: (qualified_name) @namespace.name
     ) @namespace.definition
 
-    ;; Matches file-scoped namespaces
+    ;; Matches namespace with a single identifier (no '.')
+    (namespace_declaration
+        name: (identifier) @namespace.name
+    ) @namespace.definition
+
+    ;; Matches file-scoped namespaces (qualified and unqualified respectively)
     (file_scoped_namespace_declaration
         name: (qualified_name) @namespace.name
+    ) @namespace.definition
+
+    (file_scoped_namespace_declaration
+        name: (identifier) @namespace.name
     ) @namespace.definition
   ]] .. framework_queries
 
@@ -153,17 +152,37 @@ end
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, _, tree)
   local output_file = spec.context.results_path
+  local test_nodes = neotest_node_tree_utils.get_test_nodes_data(tree)
+
+  logger.debug("neotest-dotnet: Test Nodes: ")
+  logger.debug(test_nodes)
 
   local parsed_data = trx_utils.parse_trx(output_file)
   local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+  local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
 
-  -- No test results. Something went wrong. Check for runtime error
-  if not test_results then
-    return result_utils.get_runtime_error(spec.context.id)
+  logger.debug("neotest-dotnet: TRX Results Output: ")
+  logger.debug(test_results)
+
+  logger.debug("neotest-dotnet: TRX Test Definitions Output: ")
+  logger.debug(test_definitions)
+
+  local intermediate_results
+
+  if test_results and test_definitions then
+    if #test_results.UnitTestResult > 1 then
+      test_results = test_results.UnitTestResult
+    end
+    if #test_definitions.UnitTest > 1 then
+      test_definitions = test_definitions.UnitTest
+    end
+
+    intermediate_results = result_utils.create_intermediate_results(test_results, test_definitions)
   end
 
-  if #test_results.UnitTestResult > 1 then
-    test_results = test_results.UnitTestResult
+  -- No test results. Something went wrong. Check for runtime error
+  if not intermediate_results then
+    return result_utils.get_runtime_error(spec.context.id)
   end
 
   logger.info(
@@ -172,16 +191,6 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
       .. " test results when parsing TRX file: "
       .. output_file
   )
-
-  logger.debug("neotest-dotnet: TRX Results Output: ")
-  logger.debug(test_results)
-
-  local test_nodes = get_test_nodes_data(tree)
-
-  logger.debug("neotest-dotnet: Test Nodes: ")
-  logger.debug(test_nodes)
-
-  local intermediate_results = result_utils.create_intermediate_results(test_results)
 
   logger.debug("neotest-dotnet: Intermediate Results: ")
   logger.debug(intermediate_results)
@@ -205,7 +214,6 @@ setmetatable(DotnetNeotestAdapter, {
     end
     if type(opts.discovery_root) == "string" then
       discovery_root = opts.discovery_root
-      print(discovery_root)
     end
     return DotnetNeotestAdapter
   end,
