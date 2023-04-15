@@ -29,6 +29,7 @@ describe("discover_positions", function()
       {
         {
           id = spec_file .. "::NUnitSamples",
+          is_class = false,
           name = "NUnitSamples",
           path = spec_file,
           range = { 2, 0, 16, 1 },
@@ -37,6 +38,7 @@ describe("discover_positions", function()
         {
           {
             id = spec_file .. "::NUnitSamples::SingleTests",
+            is_class = true,
             name = "SingleTests",
             path = spec_file,
             range = { 4, 0, 16, 1 },
@@ -45,6 +47,7 @@ describe("discover_positions", function()
           {
             {
               id = spec_file .. "::NUnitSamples::SingleTests::Test1",
+              is_class = false,
               name = "Test1",
               path = spec_file,
               range = { 11, 1, 15, 2 },
