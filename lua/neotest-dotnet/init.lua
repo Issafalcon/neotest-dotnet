@@ -215,7 +215,6 @@ setmetatable(DotnetNeotestAdapter, {
     end
     if type(opts.discovery_root) == "string" then
       discovery_root = opts.discovery_root
-      print(discovery_root)
     end
     return DotnetNeotestAdapter
   end,

@@ -20,8 +20,8 @@ function M.get_queries(custom_attributes)
           )
         )
       ) 
-      name: (identifier) @namespace.name
-    ) @namespace.definition
+      name: (identifier) @class.name
+    ) @class.definition
 
     ;; Specflow - NUnit
     (method_declaration
@@ -40,13 +40,13 @@ function M.get_queries(custom_attributes)
           name: (identifier) @attribute_name (#eq? @attribute_name "TestFixture")
         )
       )
-      name: (identifier) @namespace.name
-    ) @namespace.definition
+      name: (identifier) @class.name
+    ) @class.definition
 
     ;; Matches test classes (no TestFixture attribute)
     (class_declaration
-      name: (identifier) @namespace.name
-    ) @namespace.definition
+      name: (identifier) @class.name
+    ) @class.definition
 
     ;; Matches test methods
     (method_declaration

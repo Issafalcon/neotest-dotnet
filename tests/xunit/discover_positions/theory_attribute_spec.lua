@@ -14,8 +14,8 @@ describe("discover_positions", function()
   })
 
   async.it("should discover tests with inline parameters", function()
-    local spec_file = "./tests/xunit/specs/basic_tests.cs"
-    local spec_file_name = "basic_tests.cs"
+    local spec_file = "./tests/xunit/specs/theory_and_fact_mixed.cs"
+    local spec_file_name = "theory_and_fact_mixed.cs"
     local positions = plugin.discover_positions(spec_file):to_list()
 
     local function get_expected_output(file_path, file_name)
@@ -129,9 +129,4 @@ describe("discover_positions", function()
     }
     assert.same(positions, expected_positions)
   end)
-
-  -- TODO:
-  -- 1. Write tests for non-inline parameterized tests
-  -- 2. Write tests for nested namespaces
-  -- 3. Write tests for nested classes
 end)

@@ -11,8 +11,8 @@ function M.get_queries(custom_attributes)
   return [[
     ;; Matches XUnit test class (has no specific attributes on class)
     (class_declaration
-      name: (identifier) @namespace.name
-    ) @namespace.definition
+      name: (identifier) @class.name
+    ) @class.definition
 
     ;; Matches test methods
     (method_declaration

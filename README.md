@@ -100,7 +100,11 @@ dap.adapters.netcoredbg = {
 
 **NOTE: When debugging, the result output is currently not correctly relayed back to neotest (it instead reads the output from the debugger process, and registers all tests run using the 'dap' strategy as failed). The correct test feedback is displayed in a terminal window as a workaround for this limitation. This will also affect the output in the neotest-summary window. Hopefully this will be fixed in time.**
 
-# Support
+# Framework Support
+
+The adapter supports `NUnit`, `xUnit` and `MSTest` frameworks, to varying degrees. Given each framework has their own test runner, and specific features and attributes, it is a difficult task to support all the possible use cases for each one.
+
+To see if your use case is supported, check the grids below. If it isn't there, feel free to raise a ticket, or better yet, take a look at [how to contribute](#contributing) and raise a PR to support your use case!
 
 ## Key
 
@@ -112,17 +116,24 @@ dap.adapters.netcoredbg = {
 
 :x: = Unsupported (tested)
 
-| Runner / Framework | Unit Tests         | *Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow                                                | Debugging          |
-| ------------------ | ------------------ | ---------------------------------------------------------- | ------------------------------------------------------- | ------------------ |
-| C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark:                                      | :heavy_check_mark: |
-| C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                         | :part_alternation_mark: (issues with test name linking) | :heavy_check_mark: |
-| C# - MSTest        | :heavy_check_mark: | :heavy_check_mark:                                         | :heavy_check_mark:                                      | :heavy_check_mark: |
-| F# - NUnit         | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
-| F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
-| F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
+### NUnit
 
-* Parameterized tests are only itemized by the adapter when the attribute arguments are inline values. For any parameterized test attributes (including custom ones) that take non-inlined values
-the adapter will lump all these tests together in one.
+| Framework Attribute | Scope Level | Docs                                                                                            | Status             | Notes                                                                                     |
+| ------------------- | ----------- | ----------------------------------------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
+| `Test`              | Method      | [Test - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)        | :heavy_check_mark: | Supported when used inside a class with or without the `TestFixture` attribute decoration |
+| `TestFixture`       | Class       | [TestFixture - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testfixture.html) | :heavy_check_mark: |                                                                                           |
+
+| Runner / Framework | Unit Tests         | \*Parameterized Unit Tests (e.g. Using `TestCase` attribute) | Specflow                                                | Debugging          |
+| ------------------ | ------------------ | ------------------------------------------------------------ | ------------------------------------------------------- | ------------------ |
+| C# - NUnit         | :heavy_check_mark: | :heavy_check_mark:                                           | :heavy_check_mark:                                      | :heavy_check_mark: |
+| C# - XUnit         | :heavy_check_mark: | :heavy_check_mark:                                           | :part_alternation_mark: (issues with test name linking) | :heavy_check_mark: |
+| C# - MSTest        | :heavy_check_mark: | :heavy_check_mark:                                           | :heavy_check_mark:                                      | :heavy_check_mark: |
+| F# - NUnit         | :interrobang:      | :interrobang:                                                | :interrobang:                                           | :interrobang:      |
+| F# - XUnit         | :interrobang:      | :interrobang:                                                | :interrobang:                                           | :interrobang:      |
+| F# - MSTest        | :interrobang:      | :interrobang:                                                | :interrobang:                                           | :interrobang:      |
+
+- Parameterized tests are only itemized by the adapter when the attribute arguments are inline values. For any parameterized test attributes (including custom ones) that take non-inlined values
+  the adapter will lump all these tests together in one.
 
 # Limitations
 
@@ -147,13 +158,14 @@ If you have a use case that the adapter isn't quite able to cover, a more detail
 2. Open up your tests file and do what your normally do to run the tests
 3. Look through the neotest log files for logs prefixed with `neotest-dotnet` (can be found by running the command `echo stdpath("log")`)
 4. You should be able to piece together how the nodes in the neotest summary window are created (Using logs from tests that are "Found")
+
 - The Tree for each test run is printed as a list (search for `Creating specs from tree`) from each test run
 - The individual specs usually follow after in the log list, showing the command and context for each spec
 - `TRX Results Output` can be searched to find out how neotest-dotnet is parsing the test output files
 - Final results are tied back to the original list of discovered tests by using a set of conversion functions:
- - `Test Nodes` are logged - these are taken from the original node tree list, and filtered to include only the test nodes and their children (if any)
- - `Intermediate Results` are obtained and logged by parsing the TRX output into a list of test results
- - The test nodes and intermediate results are passed to a function to correlate them with each other. If the test names in the nodes match the test names from the intermediate results, a final neotest-result for that test is returned and matched to the original test position from the very initial tree of nodes
+- `Test Nodes` are logged - these are taken from the original node tree list, and filtered to include only the test nodes and their children (if any)
+- `Intermediate Results` are obtained and logged by parsing the TRX output into a list of test results
+- The test nodes and intermediate results are passed to a function to correlate them with each other. If the test names in the nodes match the test names from the intermediate results, a final neotest-result for that test is returned and matched to the original test position from the very initial tree of nodes
 
 Usually, if tests are not appearing in the `neotest` summary window, or are failing to be discovered by individual or grouped test runs, there will usually be an issue with one of the above steps. Carefully examining the names in the original node list and the names of the tests in each of the result lists, usually highighlights a mismatch.
 
@@ -165,7 +177,8 @@ Usually, if tests are not appearing in the `neotest` summary window, or are fail
 
 ## Running Tests
 
-To run the plenary tests from CLI, in the root folder, run 
+To run the plenary tests from CLI, in the root folder, run
+
 ```
 make test
 ```
