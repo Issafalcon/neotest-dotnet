@@ -33,13 +33,18 @@ function M.get_queries(custom_attributes)
       name: (identifier) @test.name
     ) @test.definition
 
-    ;; Matches test classes
+    ;; Matches test classes (with TestFixture attribute)
     (class_declaration
       (attribute_list
         (attribute
           name: (identifier) @attribute_name (#eq? @attribute_name "TestFixture")
         )
       )
+      name: (identifier) @namespace.name
+    ) @namespace.definition
+
+    ;; Matches test classes (no TestFixture attribute)
+    (class_declaration
       name: (identifier) @namespace.name
     ) @namespace.definition
 

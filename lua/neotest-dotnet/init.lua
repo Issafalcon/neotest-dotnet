@@ -88,14 +88,23 @@ DotnetNeotestAdapter.discover_positions = function(path)
 
   local query = [[
     ;; --Namespaces
-    ;; Matches namespace
+    ;; Matches namespace with a '.' in the name
     (namespace_declaration
         name: (qualified_name) @namespace.name
     ) @namespace.definition
 
-    ;; Matches file-scoped namespaces
+    ;; Matches namespace with a single identifier (no '.')
+    (namespace_declaration
+        name: (identifier) @namespace.name
+    ) @namespace.definition
+
+    ;; Matches file-scoped namespaces (qualified and unqualified respectively)
     (file_scoped_namespace_declaration
         name: (qualified_name) @namespace.name
+    ) @namespace.definition
+
+    (file_scoped_namespace_declaration
+        name: (identifier) @namespace.name
     ) @namespace.definition
   ]] .. framework_queries
 
@@ -153,17 +162,45 @@ end
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, _, tree)
   local output_file = spec.context.results_path
+  local test_nodes = get_test_nodes_data(tree)
+
+  for _, node in ipairs(test_nodes) do
+    -- Find the first instance of '::' and remove everything before it
+    local _, first_colon_end = string.find(node:data().id, "::")
+    local full_name = string.sub(node:data().id, first_colon_end + 1)
+    full_name = string.gsub(full_name, "::", ".")
+    node:data().full_name = full_name
+  end
+
+  logger.debug("neotest-dotnet: Test Nodes: ")
+  logger.debug(test_nodes)
 
   local parsed_data = trx_utils.parse_trx(output_file)
   local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+  local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
 
-  -- No test results. Something went wrong. Check for runtime error
-  if not test_results then
-    return result_utils.get_runtime_error(spec.context.id)
+  logger.debug("neotest-dotnet: TRX Results Output: ")
+  logger.debug(test_results)
+
+  logger.debug("neotest-dotnet: TRX Test Definitions Output: ")
+  logger.debug(test_definitions)
+
+  local intermediate_results
+
+  if test_results and test_definitions then
+    if #test_results.UnitTestResult > 1 then
+      test_results = test_results.UnitTestResult
+    end
+    if #test_definitions.UnitTest > 1 then
+      test_definitions = test_definitions.UnitTest
+    end
+
+    intermediate_results = result_utils.create_intermediate_results(test_results, test_definitions)
   end
 
-  if #test_results.UnitTestResult > 1 then
-    test_results = test_results.UnitTestResult
+  -- No test results. Something went wrong. Check for runtime error
+  if not intermediate_results then
+    return result_utils.get_runtime_error(spec.context.id)
   end
 
   logger.info(
@@ -172,16 +209,6 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
       .. " test results when parsing TRX file: "
       .. output_file
   )
-
-  logger.debug("neotest-dotnet: TRX Results Output: ")
-  logger.debug(test_results)
-
-  local test_nodes = get_test_nodes_data(tree)
-
-  logger.debug("neotest-dotnet: Test Nodes: ")
-  logger.debug(test_nodes)
-
-  local intermediate_results = result_utils.create_intermediate_results(test_results)
 
   logger.debug("neotest-dotnet: Intermediate Results: ")
   logger.debug(intermediate_results)
