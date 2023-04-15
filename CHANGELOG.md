@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.1.0...v1.2.0) (2023-04-15)
+
+
+### Features
+
+* new async library ([3af29c5](https://github.com/Issafalcon/neotest-dotnet/commit/3af29c5d20c73700c5dabd14a91fd2fd925ee547))
+
 ## [1.1.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.0.0...v1.1.0) (2023-02-05)
 
 
