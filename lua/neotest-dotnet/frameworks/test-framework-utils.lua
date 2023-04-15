@@ -32,7 +32,7 @@ function FrameworkUtils.get_test_framework_utils(source, custom_attribute_args)
       )
   ]]
 
-  async.util.scheduler()
+  async.scheduler()
   local root = vim.treesitter.get_string_parser(source, "c_sharp"):parse()[1]:root()
   local parsed_query = vim.treesitter.parse_query("c_sharp", framework_query)
   for _, captures in parsed_query:iter_matches(root, source) do

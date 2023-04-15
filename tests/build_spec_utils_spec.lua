@@ -1,4 +1,4 @@
-local async = require("plenary.async.tests")
+local async = require("nio").tests
 local mock = require("luassert.mock")
 local stub = require("luassert.stub")
 local lib = require("neotest.lib")

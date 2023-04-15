@@ -1,4 +1,4 @@
-local async = require("plenary.async.tests")
+local async = require("nio").tests
 
 describe("root when using solution option", function()
   require("neotest").setup({
