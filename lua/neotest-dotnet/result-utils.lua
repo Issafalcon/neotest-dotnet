@@ -96,14 +96,14 @@ function M.convert_intermediate_results(intermediate_results, test_nodes)
       end
 
       -- Use the full_name of the test, including namespace
-      local is_match = #intermediate_result.test_name == #node_data.full_name
-          and string.find(intermediate_result.test_name, node_data.full_name, 0, true)
-        or string.find(
-          intermediate_result.test_name,
-          node_data.full_name,
-          -#node_data.full_name,
-          true
-        )
+      local is_match = #result_test_name == #node_data.full_name
+        and string.find(result_test_name, node_data.full_name, 0, true)
+      -- or string.find(
+      --   intermediate_result.test_name,
+      --   node_data.full_name,
+      --   -#node_data.full_name,
+      --   true
+      -- )
 
       if is_match then
         neotest_results[node_data.id] = {

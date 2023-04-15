@@ -7,22 +7,12 @@ local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
 local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
 local build_spec_utils = require("neotest-dotnet.build-spec-utils")
+local neotest_node_tree_utils = require("neotest-dotnet.neotest-node-tree-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
 local custom_attribute_args
 local discovery_root = "project"
-
-local function get_test_nodes_data(tree)
-  local test_nodes = {}
-  for _, node in tree:iter_nodes() do
-    if node:data().type == "test" then
-      table.insert(test_nodes, node)
-    end
-  end
-
-  return test_nodes
-end
 
 DotnetNeotestAdapter.root = function(path)
   if discovery_root == "solution" then
@@ -80,6 +70,7 @@ end
 
 --- Implementation of core neotest function.
 ---@param path any
+---@diagnostic disable-next-line: undefined-doc-name
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
@@ -162,15 +153,7 @@ end
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, _, tree)
   local output_file = spec.context.results_path
-  local test_nodes = get_test_nodes_data(tree)
-
-  for _, node in ipairs(test_nodes) do
-    -- Find the first instance of '::' and remove everything before it
-    local _, first_colon_end = string.find(node:data().id, "::")
-    local full_name = string.sub(node:data().id, first_colon_end + 1)
-    full_name = string.gsub(full_name, "::", ".")
-    node:data().full_name = full_name
-  end
+  local test_nodes = neotest_node_tree_utils.get_test_nodes_data(tree)
 
   logger.debug("neotest-dotnet: Test Nodes: ")
   logger.debug(test_nodes)
