@@ -213,6 +213,43 @@ describe("create_specs", function()
     assert_spec_matches(expected_specs[1], result[1])
   end)
 
+  async.it(
+    "should return the correct specs when the position is 'test' type and the test is in a nested namespace",
+    function()
+      local expected_specs = {
+        {
+          command = "dotnet test "
+            .. test_root_path
+            .. ' --filter FullyQualifiedName~"XUnitSamples.UnitTest1+NestedClass.Test1"'
+            .. ' --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
+          context = {
+            file = "./tests/xunit/specs/nested_class.cs",
+            id = "./tests/xunit/specs/nested_class.cs::XUnitSamples::UnitTest1+NestedClass::Test1",
+            results_path = test_result_path .. ".trx",
+          },
+        },
+      }
+
+      local tree = Tree.from_list({
+        {
+          id = "./tests/xunit/specs/nested_class.cs::XUnitSamples::UnitTest1+NestedClass::Test1",
+          is_class = false,
+          name = "Test1",
+          path = "./tests/xunit/specs/nested_class.cs",
+          range = { 14, 2, 18, 3 },
+          type = "test",
+        },
+      }, function(pos)
+        return pos.id
+      end)
+
+      local result = BuildSpecUtils.create_specs(tree)
+
+      assert.equal(#expected_specs, #result)
+      assert_spec_matches(expected_specs[1], result[1])
+    end
+  )
+
   -- Caters for situation where root directory contains a .sln file, and there are nested dirs with .csproj files in them
   async.it(
     "should return multiple specs when the position is 'dir' type and contains nested project roots",

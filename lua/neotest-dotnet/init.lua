@@ -70,7 +70,6 @@ end
 
 --- Implementation of core neotest function.
 ---@param path any
----@diagnostic disable-next-line: undefined-doc-name
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
