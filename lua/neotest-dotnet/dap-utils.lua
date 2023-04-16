@@ -37,7 +37,7 @@ end
 ---@param pid string The process id of the dotnet test process
 ---@param usr_args table The user arguments to pass to the adapter
 ---@return table The adapter config
-M.get_dap_adapter_config = function(pid, usr_args)
+function M.get_dap_adapter_config(pid, usr_args)
   return vim.tbl_extend("keep", {
     type = "netcoredbg",
     name = "attach - netcoredbg",
@@ -51,7 +51,7 @@ end
 ---@param cmd string The dotnet test comman to run
 ---@param strategy_cb function The callback to run when the test process is ready to attach to:
 ---   Signature format is function(process_id), where process_id is the ID of the dotnet test process---@param _
-M.start_debuggable_test = function(cmd, strategy_cb)
+function M.start_debuggable_test(cmd, strategy_cb)
   local initial_win_id = vim.fn.win_getid()
   vim.api.nvim_create_buf(false, true)
   vim.cmd("botright new")
