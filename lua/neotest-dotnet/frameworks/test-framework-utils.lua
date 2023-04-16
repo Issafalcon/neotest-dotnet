@@ -68,22 +68,38 @@ function FrameworkUtils.get_match_type(captured_nodes)
   if captured_nodes["namespace.name"] then
     return "namespace"
   end
+  if captured_nodes["class.name"] then
+    return "class"
+  end
   if captured_nodes["test.parameterized.name"] then
     return "test.parameterized"
   end
 end
 
 function FrameworkUtils.position_id(position, parents)
-  local original_id = table.concat(
-    vim.tbl_flatten({
-      position.path,
-      vim.tbl_map(function(pos)
-        return pos.name
-      end, parents),
-      position.name,
-    }),
-    "::"
-  )
+  local original_id = position.path
+  local has_parent_class = false
+  local sep = "::"
+
+  -- Build the original ID from the parents, changing the separator to "+" if any nodes are nested classes
+  for _, node in ipairs(parents) do
+    if has_parent_class and node.is_class then
+      sep = "+"
+    end
+
+    if node.is_class then
+      has_parent_class = true
+    end
+
+    original_id = original_id .. sep .. node.name
+  end
+
+  -- Add the final leaf nodes name to the ID, again changing the separator to "+" if it is a nested class
+  sep = "::"
+  if has_parent_class and position.is_class then
+    sep = "+"
+  end
+  original_id = original_id .. sep .. position.name
 
   -- Check to see if the position is a test case and contains parentheses (meaning it is parameterized)
   -- If it is, remove the duplicated parent test name from the ID, so that when reading the trx test name
@@ -114,8 +130,19 @@ function FrameworkUtils.build_position(file_path, source, captured_nodes)
 
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
   local definition = captured_nodes[match_type .. ".definition"]
+
+  -- Introduce the C# concept of a "class" to the node, so we can distinguish between a class and a namespace.
+  --  Helps to determine if classes are nested, and therefore, if we need to modify the ID of the node (nested classes denoted by a '+' in C# test naming convention)
+  local is_class = match_type == "class"
+
+  -- Swap the match type back to "namespace" so neotest core can handle it properly
+  if match_type == "class" then
+    match_type = "namespace"
+  end
+
   local node = {
     type = match_type,
+    is_class = is_class,
     path = file_path,
     name = name,
     range = { definition:range() },

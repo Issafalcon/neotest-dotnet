@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.1](https://github.com/Issafalcon/neotest-dotnet/compare/v1.2.0...v1.2.1) (2023-04-15)
+
+
+### Bug Fixes
+
+* **27:** Fix duplicate class query matcher for nunit ([5b8687f](https://github.com/Issafalcon/neotest-dotnet/commit/5b8687f0afbbcd44257ca550867b14c745f99418))
+* **nested-classes:** Fixes position_id for nested classes ([ae0aa03](https://github.com/Issafalcon/neotest-dotnet/commit/ae0aa0314b88e07ee096c6784926a7e918a24e43))
+
+## [1.2.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.1.0...v1.2.0) (2023-04-15)
+
+
+### Features
+
+* new async library ([3af29c5](https://github.com/Issafalcon/neotest-dotnet/commit/3af29c5d20c73700c5dabd14a91fd2fd925ee547))
+
 ## [1.1.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.0.0...v1.1.0) (2023-02-05)
 
 
