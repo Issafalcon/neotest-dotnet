@@ -121,8 +121,22 @@ dap.adapters.netcoredbg = {
 | F# - XUnit         | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
 | F# - MSTest        | :interrobang:      | :interrobang:                                              | :interrobang:                                           | :interrobang:      |
 
-* Parameterized tests are only itemized by the adapter when the attribute arguments are inline values. For any parameterized test attributes (including custom ones) that take non-inlined values
-the adapter will lump all these tests together in one.
+| Framework Feature         | Scope Level | Docs                                                                                                   | Status             | Notes                                                                                                               |
+| ------------------------- | ----------- | ------------------------------------------------------------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `Test` (Attribute)        | Method      | [Test - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)               | :heavy_check_mark: | Supported when used inside a class with or without the `TestFixture` attribute decoration                           |
+| `TestFixture` (Attribute) | Class       | [TestFixture - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testfixture.html) | :heavy_check_mark: |                                                                                                                     |
+| `TestCase()` (Attribute)  | Method      | [TestCase - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testcase.html)       | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
+| Nested Classes            | Class       |                                                                                                        | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                               |
+| `Theory` (Attribute)      | Method      | [Theory - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/theory.html)           | :x:                | Currently has conflicts with XUnits `Theory` which is more commonly used                                            |
+
+### xUnit
+
+| Framework Feature          | Scope Level | Docs                                                                                        | Status             | Notes                                                                                                               |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `Fact` (Attribute)         | Method      | [Fact - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-tests)    | :heavy_check_mark: |                                                                                                                     |
+| `Theory` (Attribute)       | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory) | :heavy_check_mark: | Used in conjunction with the `InlineData()` attribute                                                               |
+| `InlineData()` (Attribute) | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory) | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
+| Nested Classes             | Class       |                                                                                             | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                               |
 
 # Limitations
 
