@@ -36,7 +36,7 @@ function FrameworkUtils.get_test_framework_utils(source, custom_attribute_args)
   local root = vim.treesitter.get_string_parser(source, "c_sharp"):parse()[1]:root()
   local parsed_query = vim.fn.has("nvim-0.9.0") == 1 and vim.treesitter.query.parse("c_sharp", framework_query) or vim.treesitter.parse_query("c_sharp", framework_query)
   for _, captures in parsed_query:iter_matches(root, source) do
-    local test_attribute = vim.treesitter.get_node_text(captures[1], source)
+    local test_attribute = vim.fn.has("nvim-0.9.0") == 1 and vim.treesitter.get_node_text(captures[1], source) or vim.treesitter.query.get_node_text(captures[1], source)
     if test_attribute then
       if
         string.find(xunit_attributes, test_attribute)
