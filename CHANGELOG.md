@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2](https://github.com/Issafalcon/neotest-dotnet/compare/v1.2.1...v1.2.2) (2023-04-17)
+
+
+### Bug Fixes
+
+* **43:** Adding new custom strategy for debugging ([1f533c9](https://github.com/Issafalcon/neotest-dotnet/commit/1f533c930cdd2f6ba43fcacf4f917c0290a3fe7b))
+* **43:** Working fix for debug output using custom strategy ([ff0f3b1](https://github.com/Issafalcon/neotest-dotnet/commit/ff0f3b135890c6d6c188316bc0c3e18c762e6e85))
+
 ## [1.2.1](https://github.com/Issafalcon/neotest-dotnet/compare/v1.2.0...v1.2.1) (2023-04-15)
 
 
