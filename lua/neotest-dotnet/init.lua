@@ -120,25 +120,19 @@ DotnetNeotestAdapter.build_spec = function(args)
   logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
   logger.debug(specs)
 
-  if args.strategy == "dap" then
+  if args.is_custom_strategy then
     if #specs > 1 then
       logger.warn(
         "neotest-dotnet: DAP strategy does not support multiple test projects. Please debug test projects or individual tests. Falling back to using default strategy."
       )
+      args.strategy = "integrated"
       return specs
     else
-      local spec = specs[1]
-      local debug_future = async.control.future()
-      logger.info("neotest-dotnet: Running tests in debug mode")
+      -- Change the strategy to custom netcoredbg strategy and pass in the additional dap args from the user
+      specs[1].dap_args = dap_args
 
-      dap_utils.start_debuggable_test(spec.command, function(dotnet_test_pid)
-        spec.strategy = dap_utils.get_dap_adapter_config(dotnet_test_pid, dap_args)
-        spec.command = nil
-        logger.info("neotest-dotnet: Sending debug start")
-        debug_future.set()
-      end)
-
-      debug_future.wait()
+      logger.debug("neotest-dotnet: DAP strategy: ")
+      logger.debug(args.strategy)
     end
   end
 
