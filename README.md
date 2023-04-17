@@ -83,7 +83,7 @@ require("neotest").setup({
 
 # Debugging
 
-[Debugging Using neotest dap strategy](https://user-images.githubusercontent.com/19861614/197394062-fe86cf8f-1a76-4868-8bc4-cf6f93ed3c90.webm)
+[Debugging Using neotest dap strategy](https://user-images.githubusercontent.com/19861614/232598584-4d673050-989d-4a3e-ae67-8969821898ce.mp4)
 
 - Install `netcoredbg` to a location of your choosing and configure `nvim-dap` to point to the correct path
 - The example below uses the `mason.nvim` default install path:
@@ -98,7 +98,28 @@ dap.adapters.netcoredbg = {
 }
 ```
 
-**NOTE: When debugging, the result output is currently not correctly relayed back to neotest (it instead reads the output from the debugger process, and registers all tests run using the 'dap' strategy as failed). The correct test feedback is displayed in a terminal window as a workaround for this limitation. This will also affect the output in the neotest-summary window. Hopefully this will be fixed in time.**
+Neotest-Dotnet uses a custom strategy for debugging, as `netcoredbg` needs to attach to the running test. The test command is modified by setting the `VSTEST_HOST_DEBUG` env variable, which then waits for the debugger to attach.
+
+To use the custom strategy instead of the usual `dap` strategy, you will need to source the custom strategy when running the command:
+
+So, instead of:
+- `lua require("neotest").run.run({strategy = "dap"})`
+
+You will need to use:
+- `lua require("neotest").run.run({strategy = require("neotest-dotnet.strategies.netcoredbg"), is_custom_dotnet_debug = true})`
+
+The `is_custom_dotnet_debug` is important for some preliminary checks and custom `dap` arguments to function correctly.
+
+You might find it easier to create a custom command and / or may a keybinding to it:
+```lua
+function()
+  if vim.bo.filetype == "cs" then
+    require("neotest").run.run({ strategy = require("neotest-dotnet.strategies.netcoredbg"), is_custom_dotnet_debug = true })
+  else
+    require("neotest").run.run({ strategy = "dap" })
+  end
+end,
+```
 
 # Framework Support
 
