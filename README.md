@@ -83,7 +83,7 @@ require("neotest").setup({
 
 # Debugging
 
-[Debugging Using neotest dap strategy](https://user-images.githubusercontent.com/19861614/197394062-fe86cf8f-1a76-4868-8bc4-cf6f93ed3c90.webm)
+[Debugging Using neotest dap strategy](https://user-images.githubusercontent.com/19861614/232598584-4d673050-989d-4a3e-ae67-8969821898ce.mp4)
 
 - Install `netcoredbg` to a location of your choosing and configure `nvim-dap` to point to the correct path
 - The example below uses the `mason.nvim` default install path:
