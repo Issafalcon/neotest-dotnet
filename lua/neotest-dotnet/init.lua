@@ -1,9 +1,7 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local async = require("neotest.async")
 local result_utils = require("neotest-dotnet.result-utils")
 local trx_utils = require("neotest-dotnet.trx-utils")
-local dap_utils = require("neotest-dotnet.dap-utils")
 local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
 local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
 local build_spec_utils = require("neotest-dotnet.build-spec-utils")
@@ -120,7 +118,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
   logger.debug(specs)
 
-  if args.is_custom_strategy then
+  if args.is_custom_dotnet_debug then
     if #specs > 1 then
       logger.warn(
         "neotest-dotnet: DAP strategy does not support multiple test projects. Please debug test projects or individual tests. Falling back to using default strategy."
@@ -130,9 +128,6 @@ DotnetNeotestAdapter.build_spec = function(args)
     else
       -- Change the strategy to custom netcoredbg strategy and pass in the additional dap args from the user
       specs[1].dap_args = dap_args
-
-      logger.debug("neotest-dotnet: DAP strategy: ")
-      logger.debug(args.strategy)
     end
   end
 
