@@ -115,7 +115,7 @@ function M.convert_intermediate_results(intermediate_results, test_nodes)
 
         if intermediate_result.error_info then
           table.insert(neotest_results[node_data.id].errors, {
-            message = intermediate_result.error_info,
+            message = intermediate_result.test_name .. ": " .. intermediate_result.error_info,
           })
 
           -- Mark as failed
