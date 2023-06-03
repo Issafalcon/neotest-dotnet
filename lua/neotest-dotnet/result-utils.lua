@@ -83,8 +83,6 @@ function M.convert_intermediate_results(intermediate_results, test_nodes)
     for _, node in ipairs(test_nodes) do
       local node_data = node:data()
       -- The test name from the trx file uses the namespace to fully qualify the test name
-      -- To simplify the comparison, it's good enough to just ensure that the last part of the test_name matches the node name (the unqualified display name of the test)
-
       local result_test_name = intermediate_result.test_name
 
       local is_dynamically_parameterized = #node:children() == 0
@@ -98,24 +96,30 @@ function M.convert_intermediate_results(intermediate_results, test_nodes)
       -- Use the full_name of the test, including namespace
       local is_match = #result_test_name == #node_data.full_name
         and string.find(result_test_name, node_data.full_name, 0, true)
-      -- or string.find(
-      --   intermediate_result.test_name,
-      --   node_data.full_name,
-      --   -#node_data.full_name,
-      --   true
-      -- )
 
       if is_match then
-        neotest_results[node_data.id] = {
-          status = intermediate_result.status,
-          short = node_data.full_name .. ":" .. intermediate_result.status,
-          errors = {},
-        }
+        -- For non-inlined parameterized tests, check if we already have an entry for the test.
+        -- If so, we need to check for a failure, and ensure the entire group of tests is marked as failed.
+        neotest_results[node_data.id] = neotest_results[node_data.id]
+          or {
+            status = intermediate_result.status,
+            short = node_data.full_name .. ":" .. intermediate_result.status,
+            errors = {},
+          }
+
+        if intermediate_result.status == "failed" then
+          -- Mark as failed for the whole thing
+          neotest_results[node_data.id].status = "failed"
+          neotest_results[node_data.id].short = node_data.full_name .. ":failed"
+        end
 
         if intermediate_result.error_info then
           table.insert(neotest_results[node_data.id].errors, {
             message = intermediate_result.error_info,
           })
+
+          -- Mark as failed
+          neotest_results[node_data.id].status = "failed"
         end
 
         break
