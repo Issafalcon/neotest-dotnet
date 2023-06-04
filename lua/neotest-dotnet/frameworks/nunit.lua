@@ -19,7 +19,7 @@ M.build_parameterized_test_positions = function(base_node, source, captured_node
   logger.debug(base_node)
 
   logger.debug("neotest-dotnet(NUnit Utils): Match Type: " .. match_type)
-  local param_query = vim.treesitter.parse_query(
+  local param_query = vim.treesitter.query.parse(
     "c_sharp",
     [[
       ;;query
