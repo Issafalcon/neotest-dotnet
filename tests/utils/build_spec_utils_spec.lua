@@ -5,7 +5,7 @@ local lib = require("neotest.lib")
 local Tree = require("neotest.types").Tree
 
 describe("build_test_fqn windows_os", function()
-  local BuildSpecUtils = require("neotest-dotnet.build-spec-utils")
+  local BuildSpecUtils = require("neotest-dotnet.utils.build-spec-utils")
   local fn_mock = mock(vim.fn, true)
   fn_mock.has.returns(true)
 
@@ -32,7 +32,7 @@ describe("build_test_fqn windows_os", function()
 end)
 
 describe("build_test_fqn linux", function()
-  local BuildSpecUtils = require("neotest-dotnet.build-spec-utils")
+  local BuildSpecUtils = require("neotest-dotnet.utils.build-spec-utils")
   local mock = require("luassert.mock")
   local fn_mock = mock(vim.fn, true)
   fn_mock.has.returns(false)
@@ -59,7 +59,7 @@ describe("build_test_fqn linux", function()
 end)
 
 describe("create_specs", function()
-  local BuildSpecUtils = require("neotest-dotnet.build-spec-utils")
+  local BuildSpecUtils = require("neotest-dotnet.utils.build-spec-utils")
   local test_result_path = "/tmp/output/test_result"
   local test_root_path = "/dummy/path/to/proj"
 

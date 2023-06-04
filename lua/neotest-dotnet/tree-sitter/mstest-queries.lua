@@ -1,4 +1,4 @@
-local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
+local attribute_utils = require("neotest-dotnet.frameworks.test-attributes")
 
 local M = {}
 

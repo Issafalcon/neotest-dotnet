@@ -2,7 +2,7 @@ local logger = require("neotest.logging")
 local lib = require("neotest.lib")
 local Path = require("plenary.path")
 local async = require("neotest.async")
-local neotest_node_tree_utils = require("neotest-dotnet.neotest-node-tree-utils")
+local neotest_node_tree_utils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 
 local BuildSpecUtils = {}
 

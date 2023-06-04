@@ -1,4 +1,4 @@
-local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
+local attribute_utils = require("neotest-dotnet.frameworks.test-attributes")
 
 local M = {}
 
@@ -18,9 +18,9 @@ function M.get_queries(custom_attributes)
     (method_declaration
       (attribute_list
         (attribute
-          name: (identifier) @attribute_name (#any-of? @attribute_name "Fact" ]] .. custom_fact_attributes .. [[)
+          name: (identifier) @attribute_name (#any-of? @attribute_name "Fact" "ClassData" ]] .. custom_fact_attributes .. [[)
         )
-      )
+      )+
       name: (identifier) @test.name
     ) @test.definition
 
@@ -41,6 +41,11 @@ function M.get_queries(custom_attributes)
           name: (identifier) @attribute_name (#any-of? @attribute_name "Theory")
         )
       )
+      (attribute_list
+        (attribute
+          name: (identifier) @extra_attributes (#not-any-of? @extra_attributes "ClassData")
+        )
+      )*
       name: (identifier) @test.parameterized.name
       parameters: (parameter_list
         (parameter
