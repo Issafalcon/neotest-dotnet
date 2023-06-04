@@ -141,6 +141,10 @@ end
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, _, tree)
   local output_file = spec.context.results_path
+
+  logger.debug("neotest-dotnet: Fetching results from neotest tree (as list): ")
+  logger.debug(tree:to_list())
+
   local test_nodes = neotest_node_tree_utils.get_test_nodes_data(tree)
 
   logger.debug("neotest-dotnet: Test Nodes: ")

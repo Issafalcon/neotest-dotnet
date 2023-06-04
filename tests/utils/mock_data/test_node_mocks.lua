@@ -1,5 +1,50 @@
 local M = {}
 
+---@type TestNodeMockData
+M.xunit_classdata_tests_simple = {
+  node_list = {
+    {
+      id = "/home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs::XUnitSamples::ClassDataTests",
+      is_class = true,
+      name = "ClassDataTests",
+      path = "/home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs",
+      range = { 6, 0, 15, 1 },
+      type = "namespace",
+    },
+    {
+      {
+        full_name = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test",
+        id = "/home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs::XUnitSamples::ClassDataTests::Theory_With_Class_Data_Test",
+        is_class = false,
+        name = "Theory_With_Class_Data_Test",
+        path = "/home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs",
+        range = { 8, 1, 14, 2 },
+        type = "test",
+      },
+    },
+  },
+  intermediate_results = {
+    {
+      error_info = "Assert.True() Failure\nExpected: True\nActual:   False\nat XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(Int32 v1, Int32 v2) in /home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs:line 14",
+      raw_output = "failed",
+      status = "failed",
+      test_name = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: -2, v2: 2)",
+    },
+    {
+      error_info = "Assert.True() Failure\nExpected: True\nActual:   False\nat XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(Int32 v1, Int32 v2) in /home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs:line 14",
+      raw_output = "failed",
+      status = "failed",
+      test_name = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: -4, v2: 6)",
+    },
+    {
+      raw_output = "passed",
+      status = "passed",
+      test_name = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: 1, v2: 2)",
+    },
+  },
+}
+
+---@type TestNodeMockData
 M.xunit_parameterized_tests_simple = {
   node_list = {
     {

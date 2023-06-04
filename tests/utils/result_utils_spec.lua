@@ -39,6 +39,34 @@ describe("create_intermediate_results xUnit", function()
       assert.are.same(expected_results, actual_results)
     end
   )
+
+  it("should create correct intermediate results from simple ClassData tests", function()
+    local expected_results = {
+      {
+        error_info = "Assert.True() Failure\nExpected: True\nActual:   False\nat XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(Int32 v1, Int32 v2) in /home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs:line 14",
+        raw_output = "failed",
+        status = "failed",
+        test_name = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: -2, v2: 2)",
+      },
+      {
+        raw_output = "passed",
+        status = "passed",
+        test_name = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: 1, v2: 2)",
+      },
+      {
+        error_info = "Assert.True() Failure\nExpected: True\nActual:   False\nat XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(Int32 v1, Int32 v2) in /home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs:line 14",
+        raw_output = "failed",
+        status = "failed",
+        test_name = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: -4, v2: 6)",
+      },
+    }
+    local actual_results = ResultUtils.create_intermediate_results(
+      trx_result_mocks.xunit_classdata_tests_simple.trx_results,
+      trx_result_mocks.xunit_classdata_tests_simple.trx_test_definitions
+    )
+
+    assert.are.same(expected_results, actual_results)
+  end)
 end)
 
 describe("convert_intermediate_results xUnit", function()
@@ -85,4 +113,36 @@ describe("convert_intermediate_results xUnit", function()
       assert.are.same(expected_results, actual_results)
     end
   )
+
+  it("should correctly convert simple ClassData intermediate results to neotest-results", function()
+    local test_tree = Tree.from_list(
+      test_node_mocks.xunit_classdata_tests_simple.node_list,
+      function(pos)
+        return pos.id
+      end
+    )
+
+    local test_nodes = neotest_node_tree_utils.get_test_nodes_data(test_tree)
+
+    local expected_results = {
+      ["/home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs::XUnitSamples::ClassDataTests::Theory_With_Class_Data_Test"] = {
+        errors = {
+          {
+            message = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: -2, v2: 2): Assert.True() Failure\nExpected: True\nActual:   False\nat XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(Int32 v1, Int32 v2) in /home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs:line 14",
+          },
+          {
+            message = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(v1: -4, v2: 6): Assert.True() Failure\nExpected: True\nActual:   False\nat XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test(Int32 v1, Int32 v2) in /home/issafalcon/repos/learning-dotnet/UnitTesting/XUnitSamples/ClassDataTests.cs:line 14",
+          },
+        },
+        short = "XUnitSamples.ClassDataTests.Theory_With_Class_Data_Test:failed",
+        status = "failed",
+      },
+    }
+    local actual_results = ResultUtils.convert_intermediate_results(
+      test_node_mocks.xunit_classdata_tests_simple.intermediate_results,
+      test_nodes
+    )
+
+    assert.are.same(expected_results, actual_results)
+  end)
 end)
