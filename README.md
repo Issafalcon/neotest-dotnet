@@ -154,12 +154,15 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 | `Fact` (Attribute)         | Method      | [Fact - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-tests)    | :heavy_check_mark: |                                                                                                                     |
 | `Theory` (Attribute)       | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory) | :heavy_check_mark: | Used in conjunction with the `InlineData()` attribute                                                               |
 | `InlineData()` (Attribute) | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory) | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
+| `ClassData()` (Attribute) | Method      | [ClassData - xUnit](https://andrewlock.net/creating-parameterised-tests-in-xunit-with-inlinedata-classdata-and-memberdata/) | :heavy_check_mark: | Bundles all dynamically parameterized tests under one neotest listing (short output contains errors for all tests. One test failure displays failure indicator for entire test "grouping"). Supports neotest 'run nearest' and 'run file' functionality |
 | Nested Classes             | Class       |                                                                                             | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                               |
 
 # Limitations
 
 1. A tradeoff was made between being able to run parameterized tests and the specificity of the `dotnet --filter` command options. A more lenient 'contains' type filter is used
    in order for the adapter to be able to work with parameterized tests. Unfortunately, no amount of formatting would support specific `FullyQualifiedName` filters for the dotnet test command for parameterized tests.
+2. Dynamically parameterized tests need to be grouped together as neotest-dotnet is unable to robustly match the full test names that the .NET test runner attaches to the tests at runtime.
+   - An attempt was made to use `dotnet test -t` to extract the dynamic test names, but this was too unreliable (duplicate test names were indistinguishable, and xUnit was the only runner that provided fully qualified test names)
 2. See the support guidance for feature and language support
 
 - F# is currently unsupported due to the fact there is no complete tree-sitter parser for F# available as yet (<https://github.com/baronfel/tree-sitter-fsharp>)
