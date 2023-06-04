@@ -1,0 +1,3 @@
+---@class TrxMockData
+---@field trx_results table
+---@field trx_test_definitions table
