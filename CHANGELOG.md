@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.3.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.2.2...v1.3.0) (2023-06-04)
+
+
+### Features
+
+* **xUnit-classdata:** Adding additional FQN of test to errorinfo ([7c33ea9](https://github.com/Issafalcon/neotest-dotnet/commit/7c33ea95fd5f6bd091cf765c8443e4e539335f0e))
+* **xUnit-classdata:** Adds backward compatible support for ts queries ([298f5c9](https://github.com/Issafalcon/neotest-dotnet/commit/298f5c9f0fd1fec766cb888dbad5d42a9198e6cc))
+* **xUnit-classdata:** Adds classdata discovery position tests ([54575fc](https://github.com/Issafalcon/neotest-dotnet/commit/54575fc44ef506afdd803a15731d9b449e3df664))
+* **xUnit-classdata:** Adds in result_utils unit tests ([188f817](https://github.com/Issafalcon/neotest-dotnet/commit/188f817c2ff92ba08a81b087a2a4532661f764f1))
+* **xUnit-classdata:** Fixes linkage of classdata test groups ([0953ad0](https://github.com/Issafalcon/neotest-dotnet/commit/0953ad0ed4d2901b006a403373d95d4c8091686e))
+
+
+### Bug Fixes
+
+* **queries:** Fixes the incorrect TS API usage for older versions ([f2bd4e8](https://github.com/Issafalcon/neotest-dotnet/commit/f2bd4e88bb0b4adf3dc2669872fc162fd9dbb4f2))
+* **treesitter:** Further attempt to fix backwards compatibil;ity ([8194245](https://github.com/Issafalcon/neotest-dotnet/commit/81942459d9387b4b2bbb28716b281838b6361a9d))
+
 ## [1.2.2](https://github.com/Issafalcon/neotest-dotnet/compare/v1.2.1...v1.2.2) (2023-04-17)
 
 
