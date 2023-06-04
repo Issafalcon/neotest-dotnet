@@ -40,9 +40,7 @@ M.build_parameterized_test_positions = function(base_node, source, captured_node
 
   logger.debug("neotest-dotnet(X-Unit Utils): Match Type: " .. match_type)
 
-  local param_query = vim.treesitter.query.parse(
-    "c_sharp",
-    [[
+  local query = [[
       ;;query
       (attribute_list
         (attribute
@@ -51,7 +49,9 @@ M.build_parameterized_test_positions = function(base_node, source, captured_node
         )
       )
     ]]
-  )
+
+  local param_query = vim.fn.has("nvim-0.9.0") == 1 and vim.treesitter.query.parse("c_sharp", query)
+    or vim.treesitter.parse_query(query, "c_sharp")
 
   -- Set type to test (otherwise it will be test.parameterized)
   local parameterized_test_node = vim.tbl_extend("force", base_node, { type = "test" })
