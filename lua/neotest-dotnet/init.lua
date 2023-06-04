@@ -1,11 +1,11 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local result_utils = require("neotest-dotnet.result-utils")
-local trx_utils = require("neotest-dotnet.trx-utils")
-local framework_utils = require("neotest-dotnet.frameworks.test-framework-utils")
-local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
-local build_spec_utils = require("neotest-dotnet.build-spec-utils")
-local neotest_node_tree_utils = require("neotest-dotnet.neotest-node-tree-utils")
+local result_utils = require("neotest-dotnet.utils.result-utils")
+local trx_utils = require("neotest-dotnet.utils.trx-utils")
+local framework_base = require("neotest-dotnet.frameworks.test-framework-base")
+local attribute = require("neotest-dotnet.frameworks.test-attributes")
+local build_spec_utils = require("neotest-dotnet.utils.build-spec-utils")
+local neotest_node_tree_utils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
@@ -28,7 +28,7 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     local found_standard_test_attribute
 
     -- Combine all attribute list arrays into one
-    local all_attributes = attribute_utils.all_test_attributes
+    local all_attributes = attribute.all_test_attributes
 
     for _, test_attribute in ipairs(all_attributes) do
       if string.find(content, "%[" .. test_attribute) then
@@ -59,11 +59,11 @@ DotnetNeotestAdapter.filter_dir = function(name)
 end
 
 DotnetNeotestAdapter._build_position = function(...)
-  return framework_utils.build_position(...)
+  return framework_base.build_position(...)
 end
 
 DotnetNeotestAdapter._position_id = function(...)
-  return framework_utils.position_id(...)
+  return framework_base.position_id(...)
 end
 
 --- Implementation of core neotest function.
@@ -71,7 +71,7 @@ end
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
-  local test_framework = framework_utils.get_test_framework_utils(content, custom_attribute_args)
+  local test_framework = framework_base.get_test_framework_utils(content, custom_attribute_args)
   local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
 
   local query = [[

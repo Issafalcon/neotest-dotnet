@@ -1,18 +1,17 @@
-local xunit_utils = require("neotest-dotnet.frameworks.xunit-utils")
-local nunit_utils = require("neotest-dotnet.frameworks.nunit-utils")
-local mstest_utils = require("neotest-dotnet.frameworks.mstest-utils")
-local attribute_utils = require("neotest-dotnet.frameworks.test-attribute-utils")
-local logger = require("neotest.logging")
+local xunit = require("neotest-dotnet.frameworks.xunit")
+local nunit = require("neotest-dotnet.frameworks.nunit")
+local mstest = require("neotest-dotnet.frameworks.mstest")
+local attributes = require("neotest-dotnet.frameworks.test-attributes")
 local async = require("neotest.async")
 
-local FrameworkUtils = {}
+local TestFrameworkBase = {}
 
 --- Returns the utils module for the test framework being used, given the current file
 ---@return FrameworkUtils
-function FrameworkUtils.get_test_framework_utils(source, custom_attribute_args)
-  local xunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "xunit")
-  local mstest_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "mstest")
-  local nunit_attributes = attribute_utils.attribute_match_list(custom_attribute_args, "nunit")
+function TestFrameworkBase.get_test_framework_utils(source, custom_attribute_args)
+  local xunit_attributes = attributes.attribute_match_list(custom_attribute_args, "xunit")
+  local mstest_attributes = attributes.attribute_match_list(custom_attribute_args, "mstest")
+  local nunit_attributes = attributes.attribute_match_list(custom_attribute_args, "nunit")
 
   local framework_query = [[
       (attribute
@@ -46,26 +45,26 @@ function FrameworkUtils.get_test_framework_utils(source, custom_attribute_args)
         string.find(xunit_attributes, test_attribute)
         or string.find(test_attribute, "SkippableFactAttribute")
       then
-        return xunit_utils
+        return xunit
       elseif
         string.find(nunit_attributes, test_attribute)
         or string.find(test_attribute, "TestAttribute")
       then
-        return nunit_utils
+        return nunit
       elseif
         string.find(mstest_attributes, test_attribute)
         or string.find(test_attribute, "TestMethodAttribute")
       then
-        return mstest_utils
+        return mstest
       else
         -- Default fallback
-        return xunit_utils
+        return xunit
       end
     end
   end
 end
 
-function FrameworkUtils.get_match_type(captured_nodes)
+function TestFrameworkBase.get_match_type(captured_nodes)
   if captured_nodes["test.name"] then
     return "test"
   end
@@ -80,7 +79,7 @@ function FrameworkUtils.get_match_type(captured_nodes)
   end
 end
 
-function FrameworkUtils.position_id(position, parents)
+function TestFrameworkBase.position_id(position, parents)
   local original_id = position.path
   local has_parent_class = false
   local sep = "::"
@@ -129,8 +128,8 @@ end
 ---@param source any
 ---@param captured_nodes any
 ---@return table
-function FrameworkUtils.build_position(file_path, source, captured_nodes)
-  local match_type = FrameworkUtils.get_match_type(captured_nodes)
+function TestFrameworkBase.build_position(file_path, source, captured_nodes)
+  local match_type = TestFrameworkBase.get_match_type(captured_nodes)
 
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
   local definition = captured_nodes[match_type .. ".definition"]
@@ -156,8 +155,8 @@ function FrameworkUtils.build_position(file_path, source, captured_nodes)
     return node
   end
 
-  return FrameworkUtils.get_test_framework_utils(source)
+  return TestFrameworkBase.get_test_framework_utils(source)
     .build_parameterized_test_positions(node, source, captured_nodes, match_type)
 end
 
-return FrameworkUtils
+return TestFrameworkBase
