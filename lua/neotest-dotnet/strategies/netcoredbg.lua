@@ -38,8 +38,6 @@ return function(spec)
     cwd = spec.cwd,
     env = { ["VSTEST_HOST_DEBUG"] = "1" },
     pty = true,
-    height = spec.strategy.height,
-    width = spec.strategy.width,
     on_stdout = function(_, data)
       nio.run(function()
         data_accum:push(table.concat(data, "\n"))
@@ -114,8 +112,6 @@ return function(spec)
         end)
       end
       attach_win = lib.ui.float.open({
-        height = spec.strategy.height,
-        width = spec.strategy.width,
         buffer = attach_buf,
       })
       vim.api.nvim_buf_set_option(attach_buf, "filetype", "neotest-attach")

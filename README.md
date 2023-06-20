@@ -100,26 +100,10 @@ dap.adapters.netcoredbg = {
 
 Neotest-Dotnet uses a custom strategy for debugging, as `netcoredbg` needs to attach to the running test. The test command is modified by setting the `VSTEST_HOST_DEBUG` env variable, which then waits for the debugger to attach.
 
-To use the custom strategy instead of the usual `dap` strategy, you will need to source the custom strategy when running the command:
-
-So, instead of:
+To use the custom strategy, you no longer need to provide a custom command other than the standard neotest recommended one for debugging:
 - `lua require("neotest").run.run({strategy = "dap"})`
 
-You will need to use:
-- `lua require("neotest").run.run({strategy = require("neotest-dotnet.strategies.netcoredbg"), is_custom_dotnet_debug = true})`
-
-The `is_custom_dotnet_debug` is important for some preliminary checks and custom `dap` arguments to function correctly.
-
-You might find it easier to create a custom command and / or may a keybinding to it:
-```lua
-function()
-  if vim.bo.filetype == "cs" then
-    require("neotest").run.run({ strategy = require("neotest-dotnet.strategies.netcoredbg"), is_custom_dotnet_debug = true })
-  else
-    require("neotest").run.run({ strategy = "dap" })
-  end
-end,
-```
+The adapter will replace the standard `dap` strategy with the custom one automatically.
 
 # Framework Support
 
