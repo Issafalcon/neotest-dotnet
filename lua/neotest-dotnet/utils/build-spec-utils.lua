@@ -24,9 +24,8 @@ end
 ---@param position table The position value of the neotest tree node
 ---@param proj_root string The path of the project root for this particular position
 ---@param filter_arg string The filter argument to pass to the dotnet test command
----@param additional_args string Any additional arguments to pass to the dotnet test command
----@return
-function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, additional_args)
+---@param dotnet_additional_args table Any additional arguments to pass to the dotnet test command
+function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, dotnet_additional_args)
   local results_path = async.fn.tempname() .. ".trx"
   filter_arg = filter_arg or ""
 
@@ -40,6 +39,13 @@ function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, addi
     "--logger",
     '"trx;logfilename=' .. vim.fn.fnamemodify(results_path, ":t:h") .. '"',
   }
+
+  if dotnet_additional_args then
+    -- Add the additional_args table to the command table
+    for _, arg in ipairs(dotnet_additional_args) do
+      table.insert(command, arg)
+    end
+  end
 
   local command_string = table.concat(command, " ")
 
@@ -55,7 +61,7 @@ function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, addi
   }
 end
 
-function BuildSpecUtils.create_specs(tree, specs)
+function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
   local position = tree:data()
 
   specs = specs or {}
@@ -71,7 +77,8 @@ function BuildSpecUtils.create_specs(tree, specs)
 
       for _, p in ipairs(proj_files) do
         if lib.files.exists(p) then
-          local spec = BuildSpecUtils.create_single_spec(position, position.path)
+          local spec =
+            BuildSpecUtils.create_single_spec(position, position.path, "", dotnet_additional_args)
           table.insert(specs, spec)
         end
       end
@@ -79,7 +86,7 @@ function BuildSpecUtils.create_specs(tree, specs)
       -- Not in a project root, so find all child dirs and recurse through them as well so we can
       -- add all the specs for all projects in the solution dir.
       for _, child in ipairs(tree:children()) do
-        BuildSpecUtils.create_specs(child, specs)
+        BuildSpecUtils.create_specs(child, specs, dotnet_additional_args)
       end
     end
   elseif position.type == "namespace" or position.type == "test" then
@@ -90,12 +97,13 @@ function BuildSpecUtils.create_specs(tree, specs)
     local filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
 
     local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
-    local spec = BuildSpecUtils.create_single_spec(position, proj_root, filter)
+    local spec =
+      BuildSpecUtils.create_single_spec(position, proj_root, filter, dotnet_additional_args)
     table.insert(specs, spec)
   elseif position.type == "file" then
     local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
 
-    local spec = BuildSpecUtils.create_single_spec(position, proj_root)
+    local spec = BuildSpecUtils.create_single_spec(position, proj_root, "", dotnet_additional_args)
     table.insert(specs, spec)
   end
 

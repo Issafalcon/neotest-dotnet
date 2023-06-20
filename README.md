@@ -72,6 +72,10 @@ require("neotest").setup({
         nunit = { "MyCustomTestAttribute" },
         mstest = { "MyCustomTestMethodAttribute" }
       },
+      -- Provide any additional "dotnet test" CLI commands here. These will be applied to ALL test runs performed via neotest. These need to be a table of strings, ideally with one key-value pair per item.
+      dotnet_additional_args = {
+        "--verbosity detailed"
+      },
       -- Tell neotest-dotnet to use either solution (requires .sln file) or project (requires .csproj or .fsproj file) as project root
       -- Note: If neovim is opened from the solution root, using the 'project' setting may sometimes find all nested projects, however,
       --       to locate all test projects in the solution more reliably (if a .sln file is present) then 'solution' is better.
@@ -80,6 +84,19 @@ require("neotest").setup({
   }
 })
 ```
+## Additional `dotnet test` arguments, per command
+
+As well as the `dotnet_additional_args` option in the adapter setup above, you may also provide additional CLI arguments as a table to each `neotest` command.
+By doing this, the additional args provided in the setup function will be *replaced* in their entirety by the ones provided at the command level. 
+
+For example, to provide a `runtime` argument to the `dotnet test` command, for all the tests in the file, you can run:
+```lua
+require("neotest").run.run({ vim.fn.expand("%"), dotnet_additional_args = { "--runtime win-x64" } })
+```
+
+**NOTE**:
+- The `--logger` and `--results-directory` arguments, as well as the `--filter` expression are all added by the adapter, so changing any of these will likely result in errors in the adapter.
+- Not all possible combinations of arguments will work with the adapter, as you might expect, given the way that output is specifically parsed and handled by the adapter.
 
 # Debugging
 
@@ -101,6 +118,7 @@ dap.adapters.netcoredbg = {
 Neotest-Dotnet uses a custom strategy for debugging, as `netcoredbg` needs to attach to the running test. The test command is modified by setting the `VSTEST_HOST_DEBUG` env variable, which then waits for the debugger to attach.
 
 To use the custom strategy, you no longer need to provide a custom command other than the standard neotest recommended one for debugging:
+
 - `lua require("neotest").run.run({strategy = "dap"})`
 
 The adapter will replace the standard `dap` strategy with the custom one automatically.
@@ -133,13 +151,13 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 
 ### xUnit
 
-| Framework Feature          | Scope Level | Docs                                                                                        | Status             | Notes                                                                                                               |
-| -------------------------- | ----------- | ------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `Fact` (Attribute)         | Method      | [Fact - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-tests)    | :heavy_check_mark: |                                                                                                                     |
-| `Theory` (Attribute)       | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory) | :heavy_check_mark: | Used in conjunction with the `InlineData()` attribute                                                               |
-| `InlineData()` (Attribute) | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory) | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
-| `ClassData()` (Attribute) | Method      | [ClassData - xUnit](https://andrewlock.net/creating-parameterised-tests-in-xunit-with-inlinedata-classdata-and-memberdata/) | :heavy_check_mark: | Bundles all dynamically parameterized tests under one neotest listing (short output contains errors for all tests. One test failure displays failure indicator for entire test "grouping"). Supports neotest 'run nearest' and 'run file' functionality |
-| Nested Classes             | Class       |                                                                                             | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                               |
+| Framework Feature          | Scope Level | Docs                                                                                                                        | Status             | Notes                                                                                                                                                                                                                                                   |
+| -------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Fact` (Attribute)         | Method      | [Fact - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-tests)                                    | :heavy_check_mark: |                                                                                                                                                                                                                                                         |
+| `Theory` (Attribute)       | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory)                                 | :heavy_check_mark: | Used in conjunction with the `InlineData()` attribute                                                                                                                                                                                                   |
+| `InlineData()` (Attribute) | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory)                                 | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality                                                                                                                                     |
+| `ClassData()` (Attribute)  | Method      | [ClassData - xUnit](https://andrewlock.net/creating-parameterised-tests-in-xunit-with-inlinedata-classdata-and-memberdata/) | :heavy_check_mark: | Bundles all dynamically parameterized tests under one neotest listing (short output contains errors for all tests. One test failure displays failure indicator for entire test "grouping"). Supports neotest 'run nearest' and 'run file' functionality |
+| Nested Classes             | Class       |                                                                                                                             | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                                                                                                                                                                   |
 
 # Limitations
 
@@ -147,7 +165,7 @@ To see if your use case is supported, check the grids below. If it isn't there, 
    in order for the adapter to be able to work with parameterized tests. Unfortunately, no amount of formatting would support specific `FullyQualifiedName` filters for the dotnet test command for parameterized tests.
 2. Dynamically parameterized tests need to be grouped together as neotest-dotnet is unable to robustly match the full test names that the .NET test runner attaches to the tests at runtime.
    - An attempt was made to use `dotnet test -t` to extract the dynamic test names, but this was too unreliable (duplicate test names were indistinguishable, and xUnit was the only runner that provided fully qualified test names)
-2. See the support guidance for feature and language support
+3. See the support guidance for feature and language support
 
 - F# is currently unsupported due to the fact there is no complete tree-sitter parser for F# available as yet (<https://github.com/baronfel/tree-sitter-fsharp>)
 

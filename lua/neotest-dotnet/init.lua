@@ -10,6 +10,7 @@ local neotest_node_tree_utils = require("neotest-dotnet.utils.neotest-node-tree-
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
 local custom_attribute_args
+local dotnet_additional_args
 local discovery_root = "project"
 
 DotnetNeotestAdapter.root = function(path)
@@ -113,7 +114,9 @@ DotnetNeotestAdapter.build_spec = function(args)
   logger.debug("neotest-dotnet: Creating specs from Tree (as list): ")
   logger.debug(args.tree:to_list())
 
-  local specs = build_spec_utils.create_specs(args.tree)
+  local additional_args = args.dotnet_additional_args or dotnet_additional_args or nil
+
+  local specs = build_spec_utils.create_specs(args.tree, nil, additional_args)
 
   logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
   logger.debug(specs)
@@ -216,6 +219,9 @@ setmetatable(DotnetNeotestAdapter, {
     end
     if type(opts.custom_attributes) == "table" then
       custom_attribute_args = opts.custom_attributes
+    end
+    if type(opts.dotnet_additional_args) == "table" then
+      dotnet_additional_args = opts.dotnet_additional_args
     end
     if type(opts.discovery_root) == "string" then
       discovery_root = opts.discovery_root
