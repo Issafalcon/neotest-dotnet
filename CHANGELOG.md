@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.3.0...v1.4.0) (2023-06-20)
+
+
+### Features
+
+* **dotnet-args:** Adds ability to provide additional dotnet args ([3fecfa5](https://github.com/Issafalcon/neotest-dotnet/commit/3fecfa59813bf243800e804c5882b163bc11d335))
+
+
+### Bug Fixes
+
+* **dap-strategy:** Removing the need to use the workaround custom debug ([bf5d37d](https://github.com/Issafalcon/neotest-dotnet/commit/bf5d37ded7a86b9d15887be88a81c791b2692524))
+
 ## [1.3.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.2.2...v1.3.0) (2023-06-04)
 
 
