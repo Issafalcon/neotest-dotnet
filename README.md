@@ -84,7 +84,7 @@ require("neotest").setup({
   }
 })
 ```
-## Additional `dotnet test` arguments, per command
+## Additional `dotnet test` arguments
 
 As well as the `dotnet_additional_args` option in the adapter setup above, you may also provide additional CLI arguments as a table to each `neotest` command.
 By doing this, the additional args provided in the setup function will be *replaced* in their entirety by the ones provided at the command level. 
