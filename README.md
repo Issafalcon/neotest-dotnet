@@ -84,17 +84,20 @@ require("neotest").setup({
   }
 })
 ```
+
 ## Additional `dotnet test` arguments
 
 As well as the `dotnet_additional_args` option in the adapter setup above, you may also provide additional CLI arguments as a table to each `neotest` command.
-By doing this, the additional args provided in the setup function will be *replaced* in their entirety by the ones provided at the command level. 
+By doing this, the additional args provided in the setup function will be _replaced_ in their entirety by the ones provided at the command level.
 
 For example, to provide a `runtime` argument to the `dotnet test` command, for all the tests in the file, you can run:
+
 ```lua
 require("neotest").run.run({ vim.fn.expand("%"), dotnet_additional_args = { "--runtime win-x64" } })
 ```
 
 **NOTE**:
+
 - The `--logger` and `--results-directory` arguments, as well as the `--filter` expression are all added by the adapter, so changing any of these will likely result in errors in the adapter.
 - Not all possible combinations of arguments will work with the adapter, as you might expect, given the way that output is specifically parsed and handled by the adapter.
 
@@ -141,13 +144,14 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 
 ### NUnit
 
-| Framework Feature         | Scope Level | Docs                                                                                                   | Status             | Notes                                                                                                               |
-| ------------------------- | ----------- | ------------------------------------------------------------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `Test` (Attribute)        | Method      | [Test - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)               | :heavy_check_mark: | Supported when used inside a class with or without the `TestFixture` attribute decoration                           |
-| `TestFixture` (Attribute) | Class       | [TestFixture - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testfixture.html) | :heavy_check_mark: |                                                                                                                     |
-| `TestCase()` (Attribute)  | Method      | [TestCase - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testcase.html)       | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
-| Nested Classes            | Class       |                                                                                                        | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                               |
-| `Theory` (Attribute)      | Method      | [Theory - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/theory.html)           | :x:                | Currently has conflicts with XUnits `Theory` which is more commonly used                                            |
+| Framework Feature            | Scope Level | Docs                                                                                                         | Status             | Notes                                                                                                                                                                                                                                                   |
+| -------------------------    | ----------- | ------------------------------------------------------------------------------------------------------       | ------------------ | -------------------------------------------------------------------------------------------------------------------                                                                                                                                     |
+| `Test` (Attribute)           | Method      | [Test - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)                     | :heavy_check_mark: | Supported when used inside a class with or without the `TestFixture` attribute decoration                                                                                                                                                               |
+| `TestFixture` (Attribute)    | Class       | [TestFixture - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testfixture.html)       | :heavy_check_mark: |                                                                                                                                                                                                                                                         |
+| `TestCase()` (Attribute)     | Method      | [TestCase - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testcase.html)             | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality                                                                                                                                     |
+| Nested Classes               | Class       |                                                                                                              | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                                                                                                                                                                   |
+| `Theory` (Attribute)         | Method      | [Theory - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/theory.html)                 | :x:                | Currently has conflicts with XUnits `Theory` which is more commonly used                                                                                                                                                                                |
+| `TestCaseSource` (Attribute) | Method      | [TestCaseSource - NUnit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testcasesource.html) | :heavy_check_mark: | Bundles all dynamically parameterized tests under one neotest listing (short output contains errors for all tests. One test failure displays failure indicator for entire test "grouping"). Supports neotest 'run nearest' and 'run file' functionality |
 
 ### xUnit
 

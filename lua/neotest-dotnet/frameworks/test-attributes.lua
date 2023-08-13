@@ -8,6 +8,7 @@ M.xunit_test_attributes = {
 M.nunit_test_attributes = {
   "Test",
   "TestCase",
+  "TestCaseSource",
 }
 
 M.mstest_test_attributes = {
