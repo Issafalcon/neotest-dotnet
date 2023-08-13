@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.4.0...v1.5.0) (2023-08-13)
+
+
+### Features
+
+* **nunit:** Adds support for testcasesource attribute ([58e7de7](https://github.com/Issafalcon/neotest-dotnet/commit/58e7de7139cf73322951b0303e4301b0f274e6b4))
+
 ## [1.4.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.3.0...v1.4.0) (2023-06-20)
 
 
