@@ -42,7 +42,7 @@ function M.get_queries(custom_attributes)
     (method_declaration
       (attribute_list
         (attribute
-          name: (identifier) @attribute_name (#eq? @attribute_name "Test" ]] .. custom_test_attributes .. [[)
+          name: (identifier) @attribute_name (#eq? @attribute_name "Test" "TestCaseSource" ]] .. custom_test_attributes .. [[)
         )
       )
       name: (identifier) @test.name
