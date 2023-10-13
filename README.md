@@ -10,10 +10,10 @@
 # Neotest .NET
 
 Neotest adapter for dotnet tests
-
-**NOTE - This is a WIP project and will be under development over the coming months with additional features**
-
-- _Please feel free to open an issue_
+- Covers the "majority" of use cases for the 3 major .NET test runners
+- Attempts to provide support for `SpecFlow` generated tests for the various test runners
+  - Support for this may still be patchy, so please raise an issue if it doesn't behave as expected
+  - `RunNearest` or `RunInFile` functions will need to be run from the *generated* specflow tests (NOT the `.feature` file, or the associated `.feature.cs` file)
 
 # Pre-requisites
 
