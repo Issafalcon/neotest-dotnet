@@ -65,7 +65,7 @@ require("neotest").setup({
       -- Extra arguments for nvim-dap configuration
       -- See https://github.com/microsoft/debugpy/wiki/Debug-configuration-settings for values
       dap = { justMyCode = false },
-      -- Let the test-discovery know about your custom attributes (otherwise tests with not be picked up)
+      -- Let the test-discovery know about your custom attributes (otherwise tests will not be picked up)
       -- Note: Only custom attributes for non-parameterized tests should be added here. See the support note about parameterized tests
       custom_attributes = {
         xunit = { "MyCustomFactAttribute" },
@@ -162,6 +162,16 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 | `InlineData()` (Attribute) | Method      | [Theory - xUnit](https://xunit.net/docs/getting-started/netcore/cmdline#write-first-theory)                                 | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality                                                                                                                                     |
 | `ClassData()` (Attribute)  | Method      | [ClassData - xUnit](https://andrewlock.net/creating-parameterised-tests-in-xunit-with-inlinedata-classdata-and-memberdata/) | :heavy_check_mark: | Bundles all dynamically parameterized tests under one neotest listing (short output contains errors for all tests. One test failure displays failure indicator for entire test "grouping"). Supports neotest 'run nearest' and 'run file' functionality |
 | Nested Classes             | Class       |                                                                                                                             | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                                                                                                                                                                   |
+
+### MSTest
+
+| Framework Feature            | Scope Level | Docs                                                                                                         | Status             | Notes                                                                                                                                                                                                                                                   |
+| -------------------------    | ----------- | ------------------------------------------------------------------------------------------------------       | ------------------ | -------------------------------------------------------------------------------------------------------------------                                                                                                                                     |
+| `TestMethod` (Attribute)           | Method      | [TestMethod - MSTest](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)                     | :heavy_check_mark: | |
+| `TestClass` (Attribute)    | Class       | [TestClass - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.testclassattribute?view=visualstudiosdk-2022)       | :heavy_check_mark: |                                                                                                                                                                                                                                                         |
+| Nested Classes               | Class       |                                                                                                              | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                                                                                                                                                                   |
+| `DataTestMethod` (Attribute)         | Method      | [DataTestMethod - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.datatestmethodattribute?view=visualstudiosdk-2022)                 | :heavy_check_mark:                | |
+| `DataRow` (Attribute) | Method      | [DataRow - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.datarowattribute?view=visualstudiosdk-2022) | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
 
 # Limitations
 
