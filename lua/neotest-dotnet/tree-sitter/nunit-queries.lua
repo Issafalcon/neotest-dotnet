@@ -9,19 +9,28 @@ function M.get_queries(custom_attributes)
     or ""
 
   return [[
-    ;; Matches SpecFlow generated classes
-    (class_declaration
-      (attribute_list
-        (attribute 
-          (attribute_argument_list
-            (attribute_argument
-              (string_literal) @attribute_argument (#match? @attribute_argument "SpecFlow\"$")
+    ;; Wrap this in alternation (https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax)
+    ;; otherwise Specflow generated classes will be picked up twice
+    [
+      ;; Matches SpecFlow generated classes
+      (class_declaration
+        (attribute_list
+          (attribute 
+            (attribute_argument_list
+              (attribute_argument
+                (string_literal) @attribute_argument (#match? @attribute_argument "SpecFlow\"$")
+              )
             )
           )
-        )
-      ) 
-      name: (identifier) @class.name
-    ) @class.definition
+        ) 
+        name: (identifier) @class.name
+      ) @class.definition
+
+      ;; Matches test classes
+      (class_declaration
+        name: (identifier) @class.name
+      ) @class.definition
+    ]
 
     ;; Specflow - NUnit
     (method_declaration
@@ -32,11 +41,6 @@ function M.get_queries(custom_attributes)
       )
       name: (identifier) @test.name
     ) @test.definition
-
-    ;; Matches test classes
-    (class_declaration
-      name: (identifier) @class.name
-    ) @class.definition
 
     ;; Matches test methods
     (method_declaration

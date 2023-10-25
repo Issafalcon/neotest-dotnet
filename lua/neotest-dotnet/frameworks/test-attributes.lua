@@ -20,6 +20,7 @@ M.specflow_test_attributes = {
   "SkippableFactAttribute",
   "TestMethodAttribute",
   "TestAttribute",
+  "NUnit.Framework.TestAttribute",
 }
 
 M.all_test_attributes = vim.tbl_flatten({

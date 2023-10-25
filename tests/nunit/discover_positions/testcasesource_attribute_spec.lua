@@ -64,4 +64,54 @@ describe("discover_positions", function()
       assert.same(positions, get_expected_output(spec_file, spec_file_name))
     end
   )
+
+  async.it("should discover Specflow Generate tests", function()
+    local spec_file = "./tests/nunit/specs/specflow.cs"
+    local spec_file_name = "specflow.cs"
+    local positions = plugin.discover_positions(spec_file):to_list()
+
+    local function get_expected_output(file_path, file_name)
+      return {
+        {
+          id = file_path,
+          name = file_name,
+          path = file_path,
+          range = { 0, 0, 108, 0 },
+          type = "file",
+        },
+        {
+          {
+            id = file_path .. "::NUnitSamples",
+            is_class = false,
+            name = "NUnitSamples",
+            path = file_path,
+            range = { 12, 0, 105, 1 },
+            type = "namespace",
+          },
+          {
+            {
+              id = file_path .. "::NUnitSamples::DummyTestFeature",
+              is_class = true,
+              name = "DummyTestFeature",
+              path = file_path,
+              range = { 19, 4, 104, 5 },
+              type = "namespace",
+            },
+            {
+              {
+                id = file_path .. "::NUnitSamples::DummyTestFeature::DummyScenario",
+                is_class = false,
+                name = "DummyScenario",
+                path = file_path,
+                range = { 75, 8, 103, 9 },
+                type = "test",
+              },
+            },
+          },
+        },
+      }
+    end
+
+    assert.same(positions, get_expected_output(spec_file, spec_file_name))
+  end)
 end)
