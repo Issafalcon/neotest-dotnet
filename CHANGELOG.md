@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.0...v1.5.1) (2023-10-25)
+
+
+### Bug Fixes
+
+* **72:** Fixes NUnit specflow test discovery issues ([cad1258](https://github.com/Issafalcon/neotest-dotnet/commit/cad1258316836b9ba4526c41e60f1e9e0490f0fe))
+
 ## [1.5.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.4.0...v1.5.0) (2023-08-13)
 
 
