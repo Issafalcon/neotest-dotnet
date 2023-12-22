@@ -10,6 +10,7 @@
 # Neotest .NET
 
 Neotest adapter for dotnet tests
+
 - Covers the "majority" of use cases for the 3 major .NET test runners
 - Attempts to provide support for `SpecFlow` generated tests for the various test runners
   - Support for this may still be patchy, so please raise an issue if it doesn't behave as expected
@@ -88,7 +89,7 @@ require("neotest").setup({
 ## Additional `dotnet test` arguments
 
 As well as the `dotnet_additional_args` option in the adapter setup above, you may also provide additional CLI arguments as a table to each `neotest` command.
-By doing this, the additional args provided in the setup function will be _replaced_ in their entirety by the ones provided at the command level.
+By doing this, the additional args provided in the setup function will be *replaced* in their entirety by the ones provided at the command level.
 
 For example, to provide a `runtime` argument to the `dotnet test` command, for all the tests in the file, you can run:
 
@@ -184,6 +185,22 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 - F# is currently unsupported due to the fact there is no complete tree-sitter parser for F# available as yet (<https://github.com/baronfel/tree-sitter-fsharp>)
 
 3. As mentioned in the **Debugging** section, there are some discrepancies in test output at the moment.
+
+## NUnit Limitations
+
+1. Using the `[Test]` attribute alongside `[TestCase]` attributes on the same method will cause `neotest-dotnet` to duplicate the item with erroneous nesting in the test structure. This will also break the ability of neotest to run the test cases e.g:
+
+```c_sharp
+    [Test]
+    [TestCase(1)]
+    [TestCase(2)]
+    public void Test_With_Parameters(int a)
+    {
+        Assert.AreEqual(2, a);
+    }
+```
+
+- The workaround is to instead, remove the redundant `[Test]` attribute.
 
 # Contributing
 
