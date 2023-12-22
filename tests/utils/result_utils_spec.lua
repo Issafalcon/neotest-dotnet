@@ -11,6 +11,32 @@ describe("create_intermediate_results xUnit", function()
   local ResultUtils = require("neotest-dotnet.utils.result-utils")
 
   it(
+    "should create correct intermediate results from simple Fact tests when one has 'DisplayName' set",
+    function()
+      local expected_results = {
+        {
+          raw_output = "passed",
+          status = "passed",
+          test_name = "XUnitSamples.SingleTests.Test1",
+        },
+        {
+          error_info = "Assert.True() Failure\nExpected: True\nActual:   False\nat XUnitSamples.SingleTests.Test2() in /home/adam/repos/learning-dotnet/UnitTesting/XUnitSamples/SingleTests.cs:line 16\n   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)\n   at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)",
+          raw_output = "failed",
+          status = "failed",
+          test_name = "XUnitSamples.SingleTests.Test2",
+        },
+      }
+
+      local actual_results = ResultUtils.create_intermediate_results(
+        trx_result_mocks.xunit_simple_tests_with_displayname.trx_results,
+        trx_result_mocks.xunit_simple_tests_with_displayname.trx_test_definitions
+      )
+
+      assert.are.same(expected_results, actual_results)
+    end
+  )
+
+  it(
     "should create correct intermediate results from simple inlined parameterized tests",
     function()
       local expected_results = {

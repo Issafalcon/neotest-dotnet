@@ -41,9 +41,18 @@ function M.create_intermediate_results(test_results, test_definitions)
             if dot_index ~= nil and (bracket_index == nil or dot_index < bracket_index) then
               qualified_test_name = test_definition._attr.name
             else
-              qualified_test_name = test_definition.TestMethod._attr.className
-                .. "."
-                .. test_definition._attr.name
+              -- Fix for https://github.com/Issafalcon/neotest-dotnet/issues/79
+              -- Modifying display name property on non-parameterized tests gives the 'name' attribute
+              -- the value of the display name, so we need to use the TestMethod name instead
+              if bracket_index == nil then
+                qualified_test_name = test_definition.TestMethod._attr.className
+                  .. "."
+                  .. test_definition.TestMethod._attr.name
+              else
+                qualified_test_name = test_definition.TestMethod._attr.className
+                  .. "."
+                  .. test_definition._attr.name
+              end
             end
           end
         end
