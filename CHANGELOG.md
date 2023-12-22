@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.1...v1.5.2) (2023-12-22)
+
+
+### Bug Fixes
+
+* **result-utils:** Fixes issue with trx when display name is specified ([7668ff9](https://github.com/Issafalcon/neotest-dotnet/commit/7668ff9122939a97e7f423670868ed95ccc401e6))
+
 ## [1.5.1](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.0...v1.5.1) (2023-10-25)
 
 
