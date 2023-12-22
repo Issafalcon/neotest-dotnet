@@ -1,6 +1,90 @@
 local M = {}
 
 ---@type TrxMockData
+M.xunit_simple_tests_with_displayname = {
+  trx_results = {
+    {
+      _attr = {
+        computerName = "pop-os",
+        duration = "00:00:00.0013299",
+        endTime = "2023-12-22T12:01:39.7370745+00:00",
+        executionId = "085adb48-a338-48ff-adbb-ea049c75f2ba",
+        outcome = "Passed",
+        relativeResultsDirectory = "085adb48-a338-48ff-adbb-ea049c75f2ba",
+        startTime = "2023-12-22T12:01:39.7370579+00:00",
+        testId = "930bb084-fb2f-ffb7-1091-b596a36c2fbd",
+        testListId = "8c84fa94-04c1-424b-9868-57a2d4851a1d",
+        testName = "XUnitSamples.SingleTests.Test1",
+        testType = "13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b",
+      },
+    },
+    {
+      Output = {
+        ErrorInfo = {
+          Message = "Assert.True() Failure\nExpected: True\nActual:   False",
+          StackTrace = "at XUnitSamples.SingleTests.Test2() in /home/adam/repos/learning-dotnet/UnitTesting/XUnitSamples/SingleTests.cs:line 16\n   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)\n   at System.Reflection.MethodInvoker.Invoke(Object obj, IntPtr* args, BindingFlags invokeAttr)",
+        },
+      },
+      _attr = {
+        computerName = "pop-os",
+        duration = "00:00:00.0007628",
+        endTime = "2023-12-22T12:01:39.7435917+00:00",
+        executionId = "0fdd90c3-a8d6-435e-a1dd-c3e1a52faf1e",
+        outcome = "Failed",
+        relativeResultsDirectory = "0fdd90c3-a8d6-435e-a1dd-c3e1a52faf1e",
+        startTime = "2023-12-22T12:01:39.7435917+00:00",
+        testId = "16e96eb4-1d8b-55da-3b5e-4a91699ccbb9",
+        testListId = "8c84fa94-04c1-424b-9868-57a2d4851a1d",
+        testName = "SomethingElse",
+        testType = "13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b",
+      },
+    },
+  },
+  trx_test_definitions = {
+    {
+      Execution = {
+        _attr = {
+          id = "03c145a9-6b82-48b5-b6e1-ca47bc753473",
+        },
+      },
+      TestMethod = {
+        _attr = {
+          adapterTypeName = "executor://xunit/VsTestRunner2/netcoreapp",
+          className = "XUnitSamples.SingleTests",
+          codeBase = "/home/adam/repos/learning-dotnet/UnitTesting/XUnitSamples/bin/Debug/net7.0/XUnitSamples.dll",
+          name = "Test1",
+        },
+      },
+      _attr = {
+        id = "930bb084-fb2f-ffb7-1091-b596a36c2fbd",
+        name = "XUnitSamples.SingleTests.Test1",
+        storage = "/home/adam/repos/learning-dotnet/unittesting/xunitsamples/bin/debug/net7.0/xunitsamples.dll",
+      },
+    },
+    {
+      Execution = {
+        _attr = {
+          id = "796d3744-4e0a-4484-b20e-c0dd54421ae7",
+        },
+      },
+      TestMethod = {
+        _attr = {
+          adapterTypeName = "executor://xunit/VsTestRunner2/netcoreapp",
+          className = "XUnitSamples.SingleTests",
+          codeBase = "/home/adam/repos/learning-dotnet/UnitTesting/XUnitSamples/bin/Debug/net7.0/XUnitSamples.dll",
+          name = "Test2",
+        },
+      },
+      _attr = {
+        id = "16e96eb4-1d8b-55da-3b5e-4a91699ccbb9",
+        name = "SomethingElse",
+        storage = "/home/adam/repos/learning-dotnet/unittesting/xunitsamples/bin/debug/net7.0/xunitsamples.dll",
+      },
+    },
+  },
+}
+
+---@type TrxMockData
 M.xunit_classdata_tests_simple = {
   trx_results = {
     {
