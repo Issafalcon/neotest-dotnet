@@ -5,8 +5,7 @@ local logger = require("neotest.logging")
 
 local DotNetUtils = {}
 
--- Write function that use nio to run dotnet test -t in --no-build in the background and saves output to a temp file
-function DotNetUtils.get_test_full_names(project_path, output_file)
+function DotNetUtils.get_test_full_names(project_path)
   local data_accum = FanoutAccum(function(prev, new)
     if not prev then
       return new
@@ -19,27 +18,27 @@ function DotNetUtils.get_test_full_names(project_path, output_file)
   assert(not open_err, open_err)
 
   data_accum:subscribe(function(data)
-    local write_err, _ = async.uv.fs_write(stream_fd, data)
-    assert(not write_err, write_err)
+    vim.loop.fs_write(stream_fd, data, nil, function(write_err)
+      assert(not write_err, write_err)
+    end)
   end)
 
   local test_names_started = false
   local finish_future = async.control.future()
   local result_code
 
-  local test_command = "dotnet test -t " .. project_path .. "-- NUnit.DisplayName=FullName"
+  local test_command = "dotnet test -t " .. project_path .. " -- NUnit.DisplayName=FullName"
   local success, job = pcall(nio.fn.jobstart, test_command, {
-    cwd = project_path,
     pty = true,
     on_stdout = function(_, data)
       for _, line in ipairs(data) do
         if test_names_started then
-          nio.run(function()
-            data_accum:push(table.concat(data, "\n"))
-          end)
+          -- Trim leading and trailing whitespace before writing
+          line = line:gsub("^%s*(.-)%s*$", "%1")
+          data_accum:push(line .. "\n")
         end
         if line:find("The following Tests are available") then
-          test_names_started = false
+          test_names_started = true
         end
       end
     end,
@@ -61,15 +60,17 @@ function DotNetUtils.get_test_full_names(project_path, output_file)
       return result_code ~= nil
     end,
     result = function()
-      if result_code == nil then
-        finish_future:wait()
-      end
+      finish_future:wait()
       local close_err = nio.uv.fs_close(stream_fd)
       assert(not close_err, close_err)
       pcall(nio.fn.chanclose, job)
+      local output = nio.fn.readfile(stream_path)
+
+      logger.debug("DotNetUtils.get_test_full_names output: ")
+      logger.debug(output)
       return {
         result_code = result_code,
-        output = nio.fn.readfile(stream_path),
+        output = output,
       }
     end,
   }

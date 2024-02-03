@@ -1,4 +1,6 @@
 local lib = require("neotest.lib")
+local dotnet_utils = require("neotest-dotnet.utils.dotnet-utils")
+local nio = require("nio")
 local logger = require("neotest.logging")
 local result_utils = require("neotest-dotnet.utils.result-utils")
 local trx_utils = require("neotest-dotnet.utils.trx-utils")
@@ -103,6 +105,10 @@ DotnetNeotestAdapter.discover_positions = function(path)
     build_position = "require('neotest-dotnet')._build_position",
     position_id = "require('neotest-dotnet')._position_id",
   })
+
+  local proj_root = lib.files.match_root_pattern("*.csproj")(path)
+  local test_list_job = dotnet_utils.get_test_full_names(proj_root)
+  local test_list = test_list_job.result()
 
   return tree
 end
