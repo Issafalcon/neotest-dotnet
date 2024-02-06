@@ -60,4 +60,11 @@ M.build_parameterized_test_positions = function(base_node, source, captured_node
   return nodes
 end
 
+---Modifies the tree using supplementary information from dotnet test -t or other methods
+---@param tree neotest.Tree The tree to modify
+---@param path string The path to the file the tree was built from
+M.post_process_tree_list = function(tree, path)
+  return tree
+end
+
 return M

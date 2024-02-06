@@ -1,6 +1,4 @@
 local lib = require("neotest.lib")
-local dotnet_utils = require("neotest-dotnet.utils.dotnet-utils")
-local nio = require("nio")
 local logger = require("neotest.logging")
 local result_utils = require("neotest-dotnet.utils.result-utils")
 local trx_utils = require("neotest-dotnet.utils.trx-utils")
@@ -69,8 +67,7 @@ DotnetNeotestAdapter._position_id = function(...)
   return framework_base.position_id(...)
 end
 
---- Implementation of core neotest function.
----@param path any
+---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
@@ -106,11 +103,15 @@ DotnetNeotestAdapter.discover_positions = function(path)
     position_id = "require('neotest-dotnet')._position_id",
   })
 
-  local proj_root = lib.files.match_root_pattern("*.csproj")(path)
-  local test_list_job = dotnet_utils.get_test_full_names(proj_root)
-  local test_list = test_list_job.result()
+  logger.debug("neotest-dotnet: Original Position Tree: ")
+  logger.debug(tree:to_list())
 
-  return tree
+  local modified_tree = test_framework.post_process_tree_list(tree, path)
+
+  logger.debug("neotest-dotnet: Post-processed Position Tree: ")
+  logger.debug(modified_tree:to_list())
+
+  return modified_tree
 end
 
 ---@summary Neotest core interface method: Build specs for running tests

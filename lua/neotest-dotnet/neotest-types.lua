@@ -1,0 +1,8 @@
+--- Nested tree structure with nodes containing data and having any
+--- number of children
+---@class neotest.Tree
+---@field private _data any
+---@field private _children neotest.Tree[]
+---@field private _nodes table<string, neotest.Tree>
+---@field private _key fun(data: any): string
+---@field private _parent? neotest.Tree
