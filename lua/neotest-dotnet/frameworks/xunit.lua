@@ -106,14 +106,14 @@ M.post_process_tree_list = function(tree, path)
   local test_list_job = DotnetUtils.get_test_full_names(proj_root)
   local dotnet_tests = test_list_job.result().output
   local tree_as_list = tree:to_list()
-  local processed_tests = {}
+  -- local processed_tests = {}
 
   local function process_test_names(node_tree)
     for i, node in ipairs(node_tree) do
       if
         node.type == "test"
-        and processed_tests[node.id] == nil
-        and processed_tests[node.name] == nil
+        -- and processed_tests[node.id] == nil
+        -- and processed_tests[node.name] == nil
       then
         local matched_tests = {}
 
@@ -134,10 +134,10 @@ M.post_process_tree_list = function(tree, path)
 
         if #matched_tests > 1 then
           -- This is a parameterized test (multiple matches for the same test)
-          local parameterized_tests = {}
           local parent_node_ranges = node.range
           for j, matched_name in ipairs(matched_tests) do
             local sub_id = path .. "::" .. string.gsub(matched_name, "%.", "::")
+            local sub_test = {}
             local sub_node = {
               id = sub_id,
               is_class = false,
@@ -151,12 +151,15 @@ M.post_process_tree_list = function(tree, path)
               },
               type = "test",
             }
-            table.insert(parameterized_tests, sub_node)
-            table.insert(processed_tests, matched_name)
+            table.insert(sub_test, sub_node)
+            table.insert(node_tree, sub_test)
+            -- table.insert(processed_tests, matched_name)
           end
 
-          table.insert(processed_tests, node.id)
-          table.insert(node_tree, i + 1, parameterized_tests)
+          logger.debug("testing: node_tree after parameterized tests: ")
+          logger.debug(node_tree)
+
+          -- table.insert(node_tree, i + 1, parameterized_tests)
         elseif #matched_tests == 1 then
           -- Replace the name with the fully qualified test name
           node_tree[i] = vim.tbl_extend("force", node, { name = matched_tests[1] })
@@ -169,6 +172,8 @@ M.post_process_tree_list = function(tree, path)
 
   process_test_names(tree_as_list)
 
+  logger.debug("neotest-dotnet: Processed tree before leaving method: ")
+  logger.debug(tree_as_list)
   return Tree.from_list(tree_as_list, function(pos)
     return pos.id
   end)
