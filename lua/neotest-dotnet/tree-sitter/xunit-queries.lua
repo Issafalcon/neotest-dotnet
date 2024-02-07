@@ -46,13 +46,13 @@ function M.get_queries(custom_attributes)
           name: (identifier) @extra_attributes (#not-any-of? @extra_attributes "ClassData")
         )
       )*
-      name: (identifier) @test.parameterized.name
+      name: (identifier) @test.name
       parameters: (parameter_list
         (parameter
           name: (identifier)
         )*
       ) @parameter_list
-    ) @test.parameterized.definition
+    ) @test.definition
   ]]
 end
 

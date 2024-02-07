@@ -153,7 +153,6 @@ M.post_process_tree_list = function(tree, path)
             }
             table.insert(sub_test, sub_node)
             table.insert(node_tree, sub_test)
-            -- table.insert(processed_tests, matched_name)
           end
 
           logger.debug("testing: node_tree after parameterized tests: ")
