@@ -47,7 +47,8 @@ function M.attribute_match_list(custom_attribute_args, framework)
   end
 
   if custom_attribute_args and custom_attribute_args[framework] then
-    vim.tbl_flatten({ attribute_match_list, custom_attribute_args[framework] })
+    attribute_match_list =
+      vim.tbl_flatten({ attribute_match_list, custom_attribute_args[framework] })
   end
 
   return M.join_test_attributes(attribute_match_list)
