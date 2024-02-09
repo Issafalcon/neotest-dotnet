@@ -19,6 +19,13 @@ function M.get_queries(custom_attributes)
       (attribute_list
         (attribute
           name: (identifier) @attribute_name (#any-of? @attribute_name "Fact" "ClassData" ]] .. custom_fact_attributes .. [[)
+          (attribute_argument_list
+            (attribute_argument
+                (string_literal
+                  (string_literal_fragment) @display_name
+                )
+            )
+          )*
         )
       )+
       name: (identifier) @test.name
@@ -39,6 +46,13 @@ function M.get_queries(custom_attributes)
       (attribute_list
         (attribute
           name: (identifier) @attribute_name (#any-of? @attribute_name "Theory")
+          (attribute_argument_list
+            (attribute_argument
+                (string_literal
+                  (string_literal_fragment) @display_name
+                )
+            )
+          )*
         )
       )
       (attribute_list

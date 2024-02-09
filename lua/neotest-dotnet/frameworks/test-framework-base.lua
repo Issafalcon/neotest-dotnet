@@ -132,6 +132,12 @@ function TestFrameworkBase.build_position(file_path, source, captured_nodes)
   local match_type = TestFrameworkBase.get_match_type(captured_nodes)
 
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
+  local display_name = nil
+
+  if captured_nodes["display_name"] then
+    display_name = vim.treesitter.get_node_text(captured_nodes["display_name"], source)
+  end
+
   local definition = captured_nodes[match_type .. ".definition"]
 
   -- Introduce the C# concept of a "class" to the node, so we can distinguish between a class and a namespace.
@@ -146,6 +152,7 @@ function TestFrameworkBase.build_position(file_path, source, captured_nodes)
   local node = {
     type = match_type,
     is_class = is_class,
+    display_name = display_name,
     path = file_path,
     name = name,
     range = { definition:range() },

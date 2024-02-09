@@ -9,8 +9,8 @@ end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
 ---@param base_node table The initial root node to build the positions from
----@param source any
----@param captured_nodes any
+---@param source any The source code to build the positions from
+---@param captured_nodes any The nodes captured by the TS query
 ---@param match_type string The type of node that was matched by the TS query
 ---@return table
 M.build_parameterized_test_positions = function(base_node, source, captured_nodes, match_type)
