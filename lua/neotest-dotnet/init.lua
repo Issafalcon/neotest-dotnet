@@ -8,7 +8,7 @@ local build_spec_utils = require("neotest-dotnet.utils.build-spec-utils")
 local neotest_node_tree_utils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
-local dap_args
+local dap = { adapter_name = "netcoredbg" }
 local custom_attribute_args
 local dotnet_additional_args
 local discovery_root = "project"
@@ -141,7 +141,7 @@ This custom command will be deprecated in future versions of this adapter.]],
           { title = "neotest-dotnet" }
         )
       end
-      specs[1].dap_args = dap_args
+      specs[1].dap = dap
       specs[1].strategy = require("neotest-dotnet.strategies.netcoredbg")
     end
   end
@@ -215,7 +215,9 @@ end
 setmetatable(DotnetNeotestAdapter, {
   __call = function(_, opts)
     if type(opts.dap) == "table" then
-      dap_args = opts.dap
+      for k, v in pairs(opts.dap) do
+        dap[k] = v
+      end
     end
     if type(opts.custom_attributes) == "table" then
       custom_attribute_args = opts.custom_attributes

@@ -59,11 +59,11 @@ return function(spec)
           debugStarted = true
 
           dap.run(vim.tbl_extend("keep", {
-            type = "netcoredbg",
+            type = spec.dap.adapter_name,
             name = "attach - netcoredbg",
             request = "attach",
             processId = dotnet_test_pid,
-          }, spec.dap_args or {}))
+          }, spec.dap.args or {}))
         end
       end
     end,
