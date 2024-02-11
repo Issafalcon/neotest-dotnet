@@ -1,18 +1,14 @@
 local logger = require("neotest.logging")
-local lib = require("neotest.lib")
-local DotnetUtils = require("neotest-dotnet.utils.dotnet-utils")
 local types = require("neotest.types")
 local node_tree_utils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 local Tree = types.Tree
+local lib = require("neotest.lib")
+local DotnetUtils = require("neotest-dotnet.utils.dotnet-utils")
 
----@class FrameworkUtils
----@field get_treesitter_queries function the TS queries for the framework
----@field build_parameterized_test_positions function Builds a tree of parameterized test nodes
----@field post_process_tree_list function Modifies the tree using supplementary information from dotnet test -t or other methods
 local M = {}
 
 function M.get_treesitter_queries(custom_attribute_args)
-  return require("neotest-dotnet.tree-sitter.xunit-queries").get_queries(custom_attribute_args)
+  return require("neotest-dotnet.tree-sitter.nunit-queries").get_queries(custom_attribute_args)
 end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
@@ -22,7 +18,50 @@ end
 ---@param match_type string The type of node that was matched by the TS query
 ---@return table
 M.build_parameterized_test_positions = function(base_node, source, captured_nodes, match_type)
-  return base_node
+  logger.debug("neotest-dotnet(NUnit Utils): Building parameterized test positions from source")
+  logger.debug("neotest-dotnet(NUnit Utils): Base node: ")
+  logger.debug(base_node)
+
+  logger.debug("neotest-dotnet(NUnit Utils): Match Type: " .. match_type)
+
+  local query = [[
+    ;;query
+    (attribute_list
+      (attribute
+        name: (identifier) @attribute_name (#any-of? @attribute_name "TestCase")
+        ((attribute_argument_list) @arguments)
+      )
+    )
+  ]]
+
+  local param_query = vim.fn.has("nvim-0.9.0") == 1 and vim.treesitter.query.parse("c_sharp", query)
+    or vim.treesitter.parse_query("c_sharp", query)
+
+  -- Set type to test (otherwise it will be test.parameterized)
+  local parameterized_test_node = vim.tbl_extend("force", base_node, { type = "test" })
+  local nodes = { parameterized_test_node }
+
+  -- Test method has parameters, so we need to create a sub-position for each test case
+  local capture_indices = {}
+  for i, capture in ipairs(param_query.captures) do
+    capture_indices[capture] = i
+  end
+  local arguments_index = capture_indices["arguments"]
+
+  for _, match in param_query:iter_matches(captured_nodes[match_type .. ".definition"], source) do
+    local args_node = match[arguments_index]
+    local args_text = vim.treesitter.get_node_text(args_node, source):gsub("[()]", "")
+
+    nodes[#nodes + 1] = vim.tbl_extend("force", parameterized_test_node, {
+      name = parameterized_test_node.name .. "(" .. args_text .. ")",
+      range = { args_node:range() },
+    })
+  end
+
+  logger.debug("neotest-dotnet(NUnit Utils): Built parameterized test positions: ")
+  logger.debug(nodes)
+
+  return nodes
 end
 
 ---Modifies the tree using supplementary information from dotnet test -t or other methods
@@ -35,10 +74,11 @@ M.post_process_tree_list = function(tree, path)
   local tree_as_list = tree:to_list()
 
   local function process_test_names(node_tree)
-    for i, node in ipairs(node_tree) do
+    for _, node in ipairs(node_tree) do
       if node.type == "test" then
         local matched_tests = {}
         local node_test_name = node.name
+        local running_id = node.id
 
         -- If node.display_name is not nil, use it to match the test name
         if node.display_name ~= nil then
@@ -74,24 +114,28 @@ M.post_process_tree_list = function(tree, path)
                 parent_node_ranges[4],
               },
               type = "test",
-              framework = "xunit",
+              framework = "nunit",
+              running_id = running_id,
             }
             table.insert(sub_test, sub_node)
             table.insert(node_tree, sub_test)
           end
 
-          node_tree[1] = vim.tbl_extend(
-            "force",
-            node,
-            { name = matched_tests[1]:gsub("%b()", ""), framework = "xunit" }
-          )
+          node_tree[1] = vim.tbl_extend("force", node, {
+            name = matched_tests[1]:gsub("%b()", ""),
+            framework = "unit",
+            running_id = running_id,
+          })
 
           logger.debug("testing: node_tree after parameterized tests: ")
           logger.debug(node_tree)
         elseif #matched_tests == 1 then
           logger.debug("testing: matched one test with name: " .. matched_tests[1])
-          node_tree[1] =
-            vim.tbl_extend("force", node, { name = matched_tests[1], framework = "xunit" })
+          node_tree[1] = vim.tbl_extend(
+            "force",
+            node,
+            { name = matched_tests[1], framework = "nunit", running_id = running_id }
+          )
         end
       end
 

@@ -6,64 +6,6 @@ local async = require("neotest.async")
 
 local TestFrameworkBase = {}
 
---- Returns the utils module for the test framework being used, given the current file
----@return FrameworkUtils
-function TestFrameworkBase.get_test_framework_utils(source, custom_attribute_args)
-  local xunit_attributes = attributes.attribute_match_list(custom_attribute_args, "xunit")
-  local mstest_attributes = attributes.attribute_match_list(custom_attribute_args, "mstest")
-  local nunit_attributes = attributes.attribute_match_list(custom_attribute_args, "nunit")
-
-  local framework_query = [[
-      (attribute
-        name: (identifier) @attribute_name (#any-of? @attribute_name ]] .. xunit_attributes .. " " .. nunit_attributes .. " " .. mstest_attributes .. [[)
-      )
-
-      (attribute
-        name: (qualified_name) @attribute_name (#match? @attribute_name "SkippableFactAttribute$")
-      )
-
-      (attribute
-        name: (qualified_name) @attribute_name (#match? @attribute_name "TestMethodAttribute$")
-      )
-
-      (attribute
-        name: (qualified_name) @attribute_name (#match? @attribute_name "TestAttribute$")
-      )
-  ]]
-
-  async.scheduler()
-  local root = vim.treesitter.get_string_parser(source, "c_sharp"):parse()[1]:root()
-  local parsed_query = vim.fn.has("nvim-0.9.0") == 1
-      and vim.treesitter.query.parse("c_sharp", framework_query)
-    or vim.treesitter.parse_query("c_sharp", framework_query)
-  for _, captures in parsed_query:iter_matches(root, source) do
-    local test_attribute = vim.fn.has("nvim-0.9.0") == 1
-        and vim.treesitter.get_node_text(captures[1], source)
-      or vim.treesitter.query.get_node_text(captures[1], source)
-    if test_attribute then
-      if
-        string.find(xunit_attributes, test_attribute)
-        or string.find(test_attribute, "SkippableFactAttribute")
-      then
-        return xunit
-      elseif
-        string.find(nunit_attributes, test_attribute)
-        or string.find(test_attribute, "TestAttribute")
-      then
-        return nunit
-      elseif
-        string.find(mstest_attributes, test_attribute)
-        or string.find(test_attribute, "TestMethodAttribute")
-      then
-        return mstest
-      else
-        -- Default fallback
-        return xunit
-      end
-    end
-  end
-end
-
 function TestFrameworkBase.get_match_type(captured_nodes)
   if captured_nodes["test.name"] then
     return "test"
@@ -166,32 +108,85 @@ function TestFrameworkBase.build_position(file_path, source, captured_nodes)
     .build_parameterized_test_positions(node, source, captured_nodes, match_type)
 end
 
---- Assuming a position_id of the form "C:\path\to\file.cs::namespace::class::method",
----   with the rule that the first :: is the separator between the file path and the rest of the position_id,
----   returns the '.' separated fully qualified name of the test, with each segment corresponding to the namespace, class, and method.
----@param position_id string The position_id of the neotest test node
----@return string The fully qualified name of the test
-function TestFrameworkBase.get_qualified_test_name_from_id(position_id)
-  local _, first_colon_end = string.find(position_id, ".cs::")
-  local full_name = string.sub(position_id, first_colon_end + 1)
-  full_name = string.gsub(full_name, "::", ".")
-  return full_name
-end
+---Creates a table of intermediate results from the parsed xml result data
+---@param test_results table
+---@return DotnetResult[]
+function TestFrameworkBase.create_intermediate_results(test_results)
+  ---@type DotnetResult[]
+  local intermediate_results = {}
 
-function TestFrameworkBase.get_test_nodes_data(tree)
-  local test_nodes = {}
-  for _, node in tree:iter_nodes() do
-    if node:data().type == "test" then
-      table.insert(test_nodes, node)
+  local outcome_mapper = {
+    Passed = "passed",
+    Failed = "failed",
+    Skipped = "skipped",
+    NotExecuted = "skipped",
+  }
+
+  for _, value in pairs(test_results) do
+    if value._attr.testName ~= nil then
+      local error_info
+      local outcome = outcome_mapper[value._attr.outcome]
+      local has_errors = value.Output and value.Output.ErrorInfo or nil
+
+      if has_errors and outcome == "failed" then
+        local stackTrace = value.Output.ErrorInfo.StackTrace or ""
+        error_info = value.Output.ErrorInfo.Message .. "\n" .. stackTrace
+      end
+      local intermediate_result = {
+        status = string.lower(outcome),
+        raw_output = value.Output and value.Output.StdOut or outcome,
+        test_name = value._attr.testName,
+        error_info = error_info,
+      }
+      table.insert(intermediate_results, intermediate_result)
     end
   end
 
-  -- Add an additional full_name property to the test nodes
-  for _, node in ipairs(test_nodes) do
-    local full_name = M.get_qualified_test_name_from_id(node:data().id)
-    node:data().full_name = full_name
+  return intermediate_results
+end
+
+---Converts and adds the results of the test_results list to the neotest_results table.
+---@param intermediate_results DotnetResult[] The marshalled dotnet console outputs
+---@param test_nodes neotest.Tree
+---@return neotest.Result[]
+function TestFrameworkBase.convert_intermediate_results(intermediate_results, test_nodes)
+  local neotest_results = {}
+
+  for _, intermediate_result in ipairs(intermediate_results) do
+    for _, node in ipairs(test_nodes) do
+      local node_data = node:data()
+
+      if intermediate_result.test_name == node_data.full_name then
+        -- For non-inlined parameterized tests, check if we already have an entry for the test.
+        -- If so, we need to check for a failure, and ensure the entire group of tests is marked as failed.
+        neotest_results[node_data.id] = neotest_results[node_data.id]
+          or {
+            status = intermediate_result.status,
+            short = node_data.full_name .. ":" .. intermediate_result.status,
+            errors = {},
+          }
+
+        if intermediate_result.status == "failed" then
+          -- Mark as failed for the whole thing
+          neotest_results[node_data.id].status = "failed"
+          neotest_results[node_data.id].short = node_data.full_name .. ":failed"
+        end
+
+        if intermediate_result.error_info then
+          table.insert(neotest_results[node_data.id].errors, {
+            message = intermediate_result.test_name .. ": " .. intermediate_result.error_info,
+          })
+
+          -- Mark as failed
+          neotest_results[node_data.id].status = "failed"
+        end
+
+        break
+      end
+    end
   end
 
-  return test_nodes
+  return neotest_results
 end
+
 return TestFrameworkBase

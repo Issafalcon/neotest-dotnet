@@ -1,11 +1,8 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local result_utils = require("neotest-dotnet.utils.result-utils")
 local trx_utils = require("neotest-dotnet.utils.trx-utils")
-local framework_base = require("neotest-dotnet.frameworks.test-framework-base")
-local attribute = require("neotest-dotnet.frameworks.test-attributes")
+local FrameworkDiscovery = require("neotest-dotnet.framework-discovery")
 local build_spec_utils = require("neotest-dotnet.utils.build-spec-utils")
-local neotest_node_tree_utils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap_args
@@ -29,7 +26,7 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     local found_standard_test_attribute
 
     -- Combine all attribute list arrays into one
-    local all_attributes = attribute.all_test_attributes
+    local all_attributes = FrameworkDiscovery.all_test_attributes
 
     for _, test_attribute in ipairs(all_attributes) do
       if string.find(content, "%[" .. test_attribute) then
@@ -60,18 +57,24 @@ DotnetNeotestAdapter.filter_dir = function(name)
 end
 
 DotnetNeotestAdapter._build_position = function(...)
-  return framework_base.build_position(...)
+  local args = { ... }
+  local framework =
+    FrameworkDiscovery.get_test_framework_utils_from_source(args[2], custom_attribute_args) -- args[2] is the content of the file
+  return framework.build_position(...)
 end
 
 DotnetNeotestAdapter._position_id = function(...)
-  return framework_base.position_id(...)
+  local args = { ... }
+  local framework = args[1].framework and require("neotest-dotnet." .. args[1].framework)
+    or require("neotest-dotnet.xunit")
+  return framework.position_id(...)
 end
 
 ---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
-  local test_framework = framework_base.get_test_framework_utils(content, custom_attribute_args)
+  local test_framework = FrameworkDiscovery.get_test_framework_utils(content, custom_attribute_args)
   local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
 
   local query = [[
@@ -155,38 +158,10 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
   logger.debug("neotest-dotnet: Fetching results from neotest tree (as list): ")
   logger.debug(tree:to_list())
 
-  local test_nodes = neotest_node_tree_utils.get_test_nodes_data(tree)
-
-  logger.debug("neotest-dotnet: Test Nodes: ")
-  logger.debug(test_nodes)
+  local test_framework = FrameworkDiscovery.get_test_framework_utils_from_tree(tree)
 
   local parsed_data = trx_utils.parse_trx(output_file)
   local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
-  local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
-
-  logger.debug("neotest-dotnet: TRX Results Output: ")
-  logger.debug(test_results)
-
-  logger.debug("neotest-dotnet: TRX Test Definitions Output: ")
-  logger.debug(test_definitions)
-
-  local intermediate_results
-
-  if test_results and test_definitions then
-    if #test_results.UnitTestResult > 1 then
-      test_results = test_results.UnitTestResult
-    end
-    if #test_definitions.UnitTest > 1 then
-      test_definitions = test_definitions.UnitTest
-    end
-
-    intermediate_results = result_utils.create_intermediate_results(test_results, test_definitions)
-  end
-
-  -- No test results. Something went wrong. Check for runtime error
-  if not intermediate_results then
-    return result_utils.get_runtime_error(spec.context.id)
-  end
 
   logger.info(
     "neotest-dotnet: Found "
@@ -195,16 +170,12 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
       .. output_file
   )
 
-  logger.debug("neotest-dotnet: Intermediate Results: ")
-  logger.debug(intermediate_results)
+  logger.debug("neotest-dotnet: TRX Results Output for" .. output_file .. ": ")
+  logger.debug(test_results)
 
-  local neotest_results =
-    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
+  local results = test_framework.generate_test_results(test_results, tree, spec.context.id)
 
-  logger.debug("neotest-dotnet: Neotest Results after conversion of Intermediate Results: ")
-  logger.debug(neotest_results)
-
-  return neotest_results
+  return results
 end
 
 setmetatable(DotnetNeotestAdapter, {
