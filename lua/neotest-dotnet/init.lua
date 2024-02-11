@@ -128,7 +128,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
   logger.debug(specs)
 
-  if args.is_custom_dotnet_debug or args.strategy == "dap" then
+  if args.strategy == "dap" then
     if #specs > 1 then
       logger.warn(
         "neotest-dotnet: DAP strategy does not support multiple test projects. Please debug test projects or individual tests. Falling back to using default strategy."
@@ -136,18 +136,6 @@ DotnetNeotestAdapter.build_spec = function(args)
       args.strategy = "integrated"
       return specs
     else
-      -- Change the strategy to custom netcoredbg strategy and pass in the additional dap args from the user
-      if args.is_custom_dotnet_debug then
-        vim.notify(
-          [[The custom command 
-'run({strategy = require('neotest-dotnet.strategies.netcoredbg'), is_custom_dotnet_debug true})'
-is no longer required. 
-You can now simply use run({strategy = 'dap'}) to debug your tests.
-This custom command will be deprecated in future versions of this adapter.]],
-          vim.log.levels.WARN,
-          { title = "neotest-dotnet" }
-        )
-      end
       specs[1].dap_args = dap_args
       specs[1].strategy = require("neotest-dotnet.strategies.netcoredbg")
     end
