@@ -4,7 +4,7 @@ local logger = require("neotest.logging")
 local M = {}
 
 function M.get_treesitter_queries(custom_attribute_args)
-  return require("neotest-dotnet.tree-sitter.mstest-queries").get_queries(custom_attribute_args)
+  return require("neotest-dotnet.mstest.ts-queries").get_queries(custom_attribute_args)
 end
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.

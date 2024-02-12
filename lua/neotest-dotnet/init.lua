@@ -74,7 +74,8 @@ end
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
-  local test_framework = FrameworkDiscovery.get_test_framework_utils(content, custom_attribute_args)
+  local test_framework =
+    FrameworkDiscovery.get_test_framework_utils_from_source(content, custom_attribute_args)
   local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
 
   local query = [[
