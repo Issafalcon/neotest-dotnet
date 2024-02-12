@@ -6,6 +6,7 @@ local NodeTreeUtils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 local Tree = types.Tree
 
 ---@type FrameworkUtils
+---@diagnostic disable-next-line: missing-fields
 local M = {}
 
 function M.get_treesitter_queries(custom_attribute_args)
@@ -107,16 +108,6 @@ M.position_id = function(position, parents)
   return original_id
 end
 
----Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
----@param base_node table The initial root node to build the positions from
----@param source any The source code to build the positions from
----@param captured_nodes any The nodes captured by the TS query
----@param match_type string The type of node that was matched by the TS query
----@return table
-M.build_parameterized_test_positions = function(base_node, source, captured_nodes, match_type)
-  return base_node
-end
-
 ---Modifies the tree using supplementary information from dotnet test -t or other methods
 ---@param tree neotest.Tree The tree to modify
 ---@param path string The path to the file the tree was built from
@@ -206,11 +197,6 @@ M.post_process_tree_list = function(tree, path)
   end)
 end
 
----Generates test results from the node tree list and trx output file from the test run
----@param test_results any
----@param tree neotest.Tree
----@param context_id string The ID of the neotest context being run
----@return neotest.Result[]
 function M.generate_test_results(test_results, tree, context_id)
   local test_nodes = NodeTreeUtils.get_test_nodes_data(tree)
 
