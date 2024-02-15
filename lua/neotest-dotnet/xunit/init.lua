@@ -3,6 +3,7 @@ local lib = require("neotest.lib")
 local DotnetUtils = require("neotest-dotnet.utils.dotnet-utils")
 local types = require("neotest.types")
 local NodeTreeUtils = require("neotest-dotnet.utils.neotest-node-tree-utils")
+local TrxUtils = require("neotest-dotnet.utils.trx-utils")
 local Tree = types.Tree
 
 ---@type FrameworkUtils
@@ -13,7 +14,7 @@ function M.get_treesitter_queries(custom_attribute_args)
   return require("neotest-dotnet.xunit.ts-queries").get_queries(custom_attribute_args)
 end
 
-local get_node_math_type = function(captured_nodes)
+local get_node_type = function(captured_nodes)
   if captured_nodes["test.name"] then
     return "test"
   end
@@ -23,13 +24,10 @@ local get_node_math_type = function(captured_nodes)
   if captured_nodes["class.name"] then
     return "class"
   end
-  if captured_nodes["test.parameterized.name"] then
-    return "test.parameterized"
-  end
 end
 
 M.build_position = function(file_path, source, captured_nodes)
-  local match_type = get_node_math_type(captured_nodes)
+  local match_type = get_node_type(captured_nodes)
 
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
   local display_name = nil
@@ -59,9 +57,7 @@ M.build_position = function(file_path, source, captured_nodes)
     range = { definition:range() },
   }
 
-  if match_type and match_type ~= "test.parameterized" then
-    return node
-  end
+  return node
 end
 
 M.position_id = function(position, parents)
@@ -88,22 +84,6 @@ M.position_id = function(position, parents)
     sep = "+"
   end
   original_id = original_id .. sep .. position.name
-
-  -- Check to see if the position is a test case and contains parentheses (meaning it is parameterized)
-  -- If it is, remove the duplicated parent test name from the ID, so that when reading the trx test name
-  -- it will be the same as the test name in the test explorer
-  -- Example:
-  --  When ID is "/path/to/test_file.cs::TestNamespace::TestClassName::ParentTestName::ParentTestName(TestName)"
-  --  Then we need it to be converted to "/path/to/test_file.cs::TestNamespace::TestClassName::ParentTestName(TestName)"
-  if position.type == "test" and position.name:find("%(") then
-    local id_segments = {}
-    for _, segment in ipairs(vim.split(original_id, "::")) do
-      table.insert(id_segments, segment)
-    end
-
-    table.remove(id_segments, #id_segments - 1)
-    return table.concat(id_segments, "::")
-  end
 
   return original_id
 end
@@ -197,7 +177,20 @@ M.post_process_tree_list = function(tree, path)
   end)
 end
 
-function M.generate_test_results(test_results, tree, context_id)
+M.generate_test_results = function(output_file_path, tree, context_id)
+  local parsed_data = TrxUtils.parse_trx(output_file_path)
+  local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+
+  logger.info(
+    "neotest-dotnet: Found "
+      .. #test_results
+      .. " test results when parsing TRX file: "
+      .. output_file_path
+  )
+
+  logger.debug("neotest-dotnet: TRX Results Output for" .. output_file_path .. ": ")
+  logger.debug(test_results)
+
   local test_nodes = NodeTreeUtils.get_test_nodes_data(tree)
 
   logger.debug("neotest-dotnet: xUnit test Nodes: ")
@@ -288,7 +281,7 @@ function M.generate_test_results(test_results, tree, context_id)
     end
   end
 
-  logger.debug("neotest-dotnet: Neotest Results after conversion of Intermediate Results: ")
+  logger.debug("neotest-dotnet: xUnit Neotest Results after conversion of Intermediate Results: ")
   logger.debug(neotest_results)
 
   return neotest_results

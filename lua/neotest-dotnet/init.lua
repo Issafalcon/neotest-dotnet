@@ -1,6 +1,5 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local trx_utils = require("neotest-dotnet.utils.trx-utils")
 local FrameworkDiscovery = require("neotest-dotnet.framework-discovery")
 local build_spec_utils = require("neotest-dotnet.utils.build-spec-utils")
 
@@ -58,8 +57,16 @@ end
 
 DotnetNeotestAdapter._build_position = function(...)
   local args = { ... }
+
+  logger.debug("neotest-dotnet: Buil Position Args: ")
+  logger.debug(args)
+
   local framework =
     FrameworkDiscovery.get_test_framework_utils_from_source(args[2], custom_attribute_args) -- args[2] is the content of the file
+
+  logger.debug("neotest-dotnet: Framework: ")
+  logger.debug(framework)
+
   return framework.build_position(...)
 end
 
@@ -160,21 +167,7 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
   logger.debug(tree:to_list())
 
   local test_framework = FrameworkDiscovery.get_test_framework_utils_from_tree(tree)
-
-  local parsed_data = trx_utils.parse_trx(output_file)
-  local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
-
-  logger.info(
-    "neotest-dotnet: Found "
-      .. #test_results
-      .. " test results when parsing TRX file: "
-      .. output_file
-  )
-
-  logger.debug("neotest-dotnet: TRX Results Output for" .. output_file .. ": ")
-  logger.debug(test_results)
-
-  local results = test_framework.generate_test_results(test_results, tree, spec.context.id)
+  local results = test_framework.generate_test_results(output_file, tree, spec.context.id)
 
   return results
 end

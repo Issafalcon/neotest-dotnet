@@ -22,7 +22,9 @@ function M.get_test_nodes_data(tree)
 
   -- Add an additional full_name property to the test nodes
   for _, node in ipairs(test_nodes) do
-    if node:data().framework == "xunit" or node:data().framework == "nunit" then
+    if
+      node:data().framework == "xunit" --[[ or node:data().framework == "nunit" ]]
+    then
       node:data().full_name = node:data().name
     else
       local full_name = M.get_qualified_test_name_from_id(node:data().id)
