@@ -24,6 +24,7 @@ M.mstest_test_attributes = {
 
 M.specflow_test_attributes = {
   "SkippableFactAttribute",
+  "Xunit.SkippableFactAttribute",
   "TestMethodAttribute",
   "TestAttribute",
   "NUnit.Framework.TestAttribute",
