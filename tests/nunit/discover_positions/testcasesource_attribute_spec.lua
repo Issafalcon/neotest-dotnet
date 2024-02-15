@@ -30,6 +30,7 @@ describe("discover_positions", function()
           },
           {
             {
+              framework = "nunit",
               id = file_path .. "::NUnitSamples",
               is_class = false,
               name = "NUnitSamples",
@@ -39,6 +40,7 @@ describe("discover_positions", function()
             },
             {
               {
+                framework = "nunit",
                 id = file_path .. "::NUnitSamples::Tests",
                 is_class = true,
                 name = "Tests",
@@ -48,6 +50,7 @@ describe("discover_positions", function()
               },
               {
                 {
+                  framework = "nunit",
                   id = file_path .. "::NUnitSamples::Tests::DivideTest",
                   is_class = false,
                   name = "DivideTest",
@@ -81,6 +84,7 @@ describe("discover_positions", function()
         },
         {
           {
+            framework = "nunit",
             id = file_path .. "::NUnitSamples",
             is_class = false,
             name = "NUnitSamples",
@@ -90,6 +94,7 @@ describe("discover_positions", function()
           },
           {
             {
+              framework = "nunit",
               id = file_path .. "::NUnitSamples::DummyTestFeature",
               is_class = true,
               name = "DummyTestFeature",
@@ -99,6 +104,7 @@ describe("discover_positions", function()
             },
             {
               {
+                framework = "nunit",
                 id = file_path .. "::NUnitSamples::DummyTestFeature::DummyScenario",
                 is_class = false,
                 name = "DummyScenario",
