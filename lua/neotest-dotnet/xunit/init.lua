@@ -1,6 +1,7 @@
 local logger = require("neotest.logging")
 local lib = require("neotest.lib")
 local DotnetUtils = require("neotest-dotnet.utils.dotnet-utils")
+local BuildSpecUtils = require("neotest-dotnet.utils.build-spec-utils")
 local types = require("neotest.types")
 local NodeTreeUtils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 local TrxUtils = require("neotest-dotnet.utils.trx-utils")
@@ -180,6 +181,7 @@ end
 M.generate_test_results = function(output_file_path, tree, context_id)
   local parsed_data = TrxUtils.parse_trx(output_file_path)
   local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
+  local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
 
   logger.debug("neotest-dotnet: TRX Results Output for" .. output_file_path .. ": ")
   logger.debug(test_results)
@@ -195,6 +197,9 @@ M.generate_test_results = function(output_file_path, tree, context_id)
     if #test_results.UnitTestResult > 1 then
       test_results = test_results.UnitTestResult
     end
+    if #test_definitions.UnitTest > 1 then
+      test_definitions = test_definitions.UnitTest
+    end
 
     intermediate_results = {}
 
@@ -206,6 +211,35 @@ M.generate_test_results = function(output_file_path, tree, context_id)
     }
 
     for _, value in pairs(test_results) do
+      local qualified_test_name
+
+      if value._attr.testId ~= nil then
+        for _, test_definition in pairs(test_definitions) do
+          if test_definition._attr.id ~= nil then
+            if value._attr.testId == test_definition._attr.id then
+              local dot_index = string.find(test_definition._attr.name, "%.")
+              local bracket_index = string.find(test_definition._attr.name, "%(")
+              if dot_index ~= nil and (bracket_index == nil or dot_index < bracket_index) then
+                qualified_test_name = test_definition._attr.name
+              else
+                -- For Specflow tests, the will be an inline DisplayName attribute.
+                -- This wrecks the test name for us, so we need to use the ClassName and
+                -- MethodName attributes to get the full test name to use when comparing the results with the node name.
+                if bracket_index == nil then
+                  qualified_test_name = test_definition.TestMethod._attr.className
+                    .. "."
+                    .. test_definition.TestMethod._attr.name
+                else
+                  qualified_test_name = test_definition.TestMethod._attr.className
+                    .. "."
+                    .. test_definition._attr.name
+                end
+              end
+            end
+          end
+        end
+      end
+
       if value._attr.testName ~= nil then
         local error_info
         local outcome = outcome_mapper[value._attr.outcome]
@@ -219,6 +253,7 @@ M.generate_test_results = function(output_file_path, tree, context_id)
           status = string.lower(outcome),
           raw_output = value.Output and value.Output.StdOut or outcome,
           test_name = value._attr.testName,
+          qualified_test_name = qualified_test_name,
           error_info = error_info,
         }
         table.insert(intermediate_results, intermediate_result)
@@ -244,7 +279,10 @@ M.generate_test_results = function(output_file_path, tree, context_id)
     for _, node in ipairs(test_nodes) do
       local node_data = node:data()
 
-      if intermediate_result.test_name == node_data.full_name then
+      if
+        intermediate_result.test_name == node_data.full_name
+        or intermediate_result.qualified_test_name == BuildSpecUtils.build_test_fqn(node_data.id)
+      then
         -- For non-inlined parameterized tests, check if we already have an entry for the test.
         -- If so, we need to check for a failure, and ensure the entire group of tests is marked as failed.
         neotest_results[node_data.id] = neotest_results[node_data.id]

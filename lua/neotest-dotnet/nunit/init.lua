@@ -166,13 +166,6 @@ M.generate_test_results = function(output_file_path, tree, context_id)
   local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
   local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
 
-  logger.info(
-    "neotest-dotnet: Found "
-      .. #test_results
-      .. " test results when parsing TRX file: "
-      .. output_file_path
-  )
-
   logger.debug("neotest-dotnet: NUnit TRX Results Output for" .. output_file_path .. ": ")
   logger.debug(test_results)
 
