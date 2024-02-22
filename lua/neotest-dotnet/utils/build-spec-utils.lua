@@ -93,7 +93,7 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
     -- Allow a more lenient 'contains' match for the filter, accepting tradeoff that it may
     -- also run tests with similar names. This allows us to run parameterized tests individually
     -- or as a group.
-    local fqn = BuildSpecUtils.build_test_fqn(position.id)
+    local fqn = BuildSpecUtils.build_test_fqn(position.running_id or position.id)
     local filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
 
     local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)

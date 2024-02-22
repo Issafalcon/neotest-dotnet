@@ -1,6 +1,7 @@
 local async = require("nio").tests
 local plugin = require("neotest-dotnet")
-local Tree = require("neotest.types").Tree
+local DotnetUtils = require("neotest-dotnet.utils.dotnet-utils")
+local stub = require("luassert.stub")
 
 A = function(...)
   print(vim.inspect(...))
@@ -13,74 +14,106 @@ describe("discover_positions", function()
     },
   })
 
+  before_each(function()
+    stub(DotnetUtils, "get_test_full_names", function()
+      return {
+        is_complete = true,
+        result = function()
+          return {
+            output = {
+              "xunit.testproj1.UnitTest1.Test1",
+              "xunit.testproj1.UnitTest1.Test2(a: 1)",
+              "xunit.testproj1.UnitTest1.Test2(a: 2)",
+            },
+            result_code = 0,
+          }
+        end,
+      }
+    end)
+  end)
+
+  after_each(function()
+    DotnetUtils.get_test_full_names:revert()
+  end)
+
   async.it("should discover tests with inline parameters", function()
     local spec_file = "./tests/xunit/specs/theory_and_fact_mixed.cs"
     local spec_file_name = "theory_and_fact_mixed.cs"
     local positions = plugin.discover_positions(spec_file):to_list()
 
-    local function get_expected_output(file_path, file_name)
+    local function get_expected_output()
       return {
         {
-          id = file_path,
-          name = file_name,
-          path = file_path,
+          id = "./tests/xunit/specs/theory_and_fact_mixed.cs",
+          name = "theory_and_fact_mixed.cs",
+          path = "./tests/xunit/specs/theory_and_fact_mixed.cs",
           range = { 0, 0, 18, 0 },
           type = "file",
         },
         {
           {
-            id = file_path .. "::xunit.testproj1",
+            framework = "xunit",
+            id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1",
             is_class = false,
             name = "xunit.testproj1",
-            path = file_path,
+            path = "./tests/xunit/specs/theory_and_fact_mixed.cs",
             range = { 0, 0, 17, 1 },
             type = "namespace",
           },
           {
             {
-              id = file_path .. "::xunit.testproj1::UnitTest1",
+              framework = "xunit",
+              id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1::UnitTest1",
               is_class = true,
               name = "UnitTest1",
-              path = file_path,
+              path = "./tests/xunit/specs/theory_and_fact_mixed.cs",
               range = { 2, 0, 17, 1 },
               type = "namespace",
             },
             {
               {
-                id = file_path .. "::xunit.testproj1::UnitTest1::Test1",
+                framework = "xunit",
+                id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1::UnitTest1::Test1",
                 is_class = false,
-                name = "Test1",
-                path = file_path,
+                name = "xunit.testproj1.UnitTest1.Test1",
+                path = "./tests/xunit/specs/theory_and_fact_mixed.cs",
                 range = { 4, 1, 8, 2 },
+                running_id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1::UnitTest1::Test1",
                 type = "test",
               },
             },
             {
               {
-                id = file_path .. "::xunit.testproj1::UnitTest1::Test2",
+                framework = "xunit",
+                id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1::UnitTest1::Test2",
                 is_class = false,
-                name = "Test2",
-                path = file_path,
+                name = "xunit.testproj1.UnitTest1.Test2",
+                path = "./tests/xunit/specs/theory_and_fact_mixed.cs",
                 range = { 10, 1, 16, 2 },
+                running_id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1::UnitTest1::Test2",
                 type = "test",
               },
               {
                 {
-                  id = file_path .. "::xunit.testproj1::UnitTest1::Test2(a: 1)",
+                  framework = "xunit",
+                  id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit::testproj1::UnitTest1::Test2(a: 1)",
                   is_class = false,
-                  name = "Test2(a: 1)",
-                  path = file_path,
-                  range = { 11, 12, 11, 15 },
+                  name = "xunit.testproj1.UnitTest1.Test2(a: 1)",
+                  path = "./tests/xunit/specs/theory_and_fact_mixed.cs",
+                  range = { 11, 1, 11, 2 },
+                  running_id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1::UnitTest1::Test2",
                   type = "test",
                 },
               },
               {
                 {
-                  id = file_path .. "::xunit.testproj1::UnitTest1::Test2(a: 2)",
+                  framework = "xunit",
+                  id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit::testproj1::UnitTest1::Test2(a: 2)",
                   is_class = false,
-                  name = "Test2(a: 2)",
-                  path = file_path,
-                  range = { 12, 12, 12, 15 },
+                  name = "xunit.testproj1.UnitTest1.Test2(a: 2)",
+                  path = "./tests/xunit/specs/theory_and_fact_mixed.cs",
+                  range = { 12, 1, 12, 2 },
+                  running_id = "./tests/xunit/specs/theory_and_fact_mixed.cs::xunit.testproj1::UnitTest1::Test2",
                   type = "test",
                 },
               },
@@ -90,7 +123,7 @@ describe("discover_positions", function()
       }
     end
 
-    assert.same(positions, get_expected_output(spec_file, spec_file_name))
+    assert.same(positions, get_expected_output())
   end)
 
   async.it("should discover tests in block scoped namespace", function()
@@ -107,6 +140,7 @@ describe("discover_positions", function()
       },
       {
         {
+          framework = "xunit",
           id = "./tests/xunit/specs/block_scoped_namespace.cs::xunit.testproj1",
           is_class = false,
           name = "xunit.testproj1",
@@ -116,6 +150,7 @@ describe("discover_positions", function()
         },
         {
           {
+            framework = "xunit",
             id = "./tests/xunit/specs/block_scoped_namespace.cs::xunit.testproj1::UnitTest1",
             is_class = true,
             name = "UnitTest1",
@@ -125,17 +160,20 @@ describe("discover_positions", function()
           },
           {
             {
+              framework = "xunit",
               id = "./tests/xunit/specs/block_scoped_namespace.cs::xunit.testproj1::UnitTest1::Test1",
               is_class = false,
-              name = "Test1",
+              name = "xunit.testproj1.UnitTest1.Test1",
               path = "./tests/xunit/specs/block_scoped_namespace.cs",
               range = { 4, 2, 8, 3 },
+              running_id = "./tests/xunit/specs/block_scoped_namespace.cs::xunit.testproj1::UnitTest1::Test1",
               type = "test",
             },
           },
         },
       },
     }
+
     assert.same(positions, expected_positions)
   end)
 end)

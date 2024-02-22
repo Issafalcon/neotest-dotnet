@@ -1,5 +1,7 @@
 local async = require("nio").tests
 local plugin = require("neotest-dotnet")
+local DotnetUtils = require("neotest-dotnet.utils.dotnet-utils")
+local stub = require("luassert.stub")
 
 A = function(...)
   print(vim.inspect(...))
@@ -15,6 +17,26 @@ describe("discover_positions", function()
       }),
     },
   })
+
+  before_each(function()
+    stub(DotnetUtils, "get_test_full_names", function()
+      return {
+        is_complete = true,
+        result = function()
+          return {
+            output = {
+              "XUnitSamples.CosmosConnectorTest.Custom_Attribute_Tests",
+            },
+            result_code = 0,
+          }
+        end,
+      }
+    end)
+  end)
+
+  after_each(function()
+    DotnetUtils.get_test_full_names:revert()
+  end)
 
   async.it(
     "should discover tests with custom attribute when no other xUnit tests are present",
@@ -34,6 +56,7 @@ describe("discover_positions", function()
           },
           {
             {
+              framework = "xunit",
               id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples",
               is_class = false,
               name = "XUnitSamples",
@@ -43,6 +66,7 @@ describe("discover_positions", function()
             },
             {
               {
+                framework = "xunit",
                 id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples::CosmosConnectorTest",
                 is_class = true,
                 name = "CosmosConnectorTest",
@@ -52,6 +76,8 @@ describe("discover_positions", function()
               },
               {
                 {
+                  display_name = "Custom attribute works ok",
+                  framework = "xunit",
                   id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples::CosmosConnectorTest::Custom_Attribute_Tests",
                   is_class = false,
                   name = "Custom_Attribute_Tests",

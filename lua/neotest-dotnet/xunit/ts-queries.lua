@@ -1,11 +1,11 @@
-local attribute_utils = require("neotest-dotnet.frameworks.test-attributes")
+local framework_discovery = require("neotest-dotnet.framework-discovery")
 
 local M = {}
 
 function M.get_queries(custom_attributes)
   -- Don't include parameterized test attribute indicators so we don't double count them
   local custom_fact_attributes = custom_attributes
-      and attribute_utils.join_test_attributes(custom_attributes.xunit)
+      and framework_discovery.join_test_attributes(custom_attributes.xunit)
     or ""
 
   return [[
@@ -19,6 +19,16 @@ function M.get_queries(custom_attributes)
       (attribute_list
         (attribute
           name: (identifier) @attribute_name (#any-of? @attribute_name "Fact" "ClassData" ]] .. custom_fact_attributes .. [[)
+          (attribute_argument_list
+            (attribute_argument
+                (name_equals
+                  (identifier) @property_name (#match? @property_name "DisplayName$")
+                )
+                (string_literal
+                  (string_literal_fragment) @display_name
+                )
+            )
+          )*
         )
       )+
       name: (identifier) @test.name
@@ -39,6 +49,13 @@ function M.get_queries(custom_attributes)
       (attribute_list
         (attribute
           name: (identifier) @attribute_name (#any-of? @attribute_name "Theory")
+          (attribute_argument_list
+            (attribute_argument
+                (string_literal
+                  (string_literal_fragment) @display_name
+                )
+            )
+          )*
         )
       )
       (attribute_list
@@ -46,13 +63,13 @@ function M.get_queries(custom_attributes)
           name: (identifier) @extra_attributes (#not-any-of? @extra_attributes "ClassData")
         )
       )*
-      name: (identifier) @test.parameterized.name
+      name: (identifier) @test.name
       parameters: (parameter_list
         (parameter
           name: (identifier)
         )*
       ) @parameter_list
-    ) @test.parameterized.definition
+    ) @test.definition
   ]]
 end
 
