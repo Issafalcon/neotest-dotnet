@@ -4,7 +4,7 @@ local FrameworkDiscovery = require("neotest-dotnet.framework-discovery")
 local build_spec_utils = require("neotest-dotnet.utils.build-spec-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
-local dap_args
+local dap = { adapter_name = "netcoredbg" }
 local custom_attribute_args
 local dotnet_additional_args
 local discovery_root = "project"
@@ -175,7 +175,9 @@ end
 setmetatable(DotnetNeotestAdapter, {
   __call = function(_, opts)
     if type(opts.dap) == "table" then
-      dap_args = opts.dap
+      for k, v in pairs(opts.dap) do
+        dap[k] = v
+      end
     end
     if type(opts.custom_attributes) == "table" then
       custom_attribute_args = opts.custom_attributes
