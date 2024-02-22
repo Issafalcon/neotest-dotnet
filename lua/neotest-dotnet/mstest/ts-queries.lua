@@ -1,11 +1,11 @@
-local attribute_utils = require("neotest-dotnet.frameworks.test-attributes")
+local framework_discovery = require("neotest-dotnet.framework-discovery")
 
 local M = {}
 
 function M.get_queries(custom_attributes)
   -- Don't include parameterized test attribute indicators so we don't double count them
   local custom_fact_attributes = custom_attributes
-      and attribute_utils.join_test_attributes(custom_attributes.mstest)
+      and framework_discovery.join_test_attributes(custom_attributes.mstest)
     or ""
 
   return [[

@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.3](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.2...v1.5.3) (2024-02-07)
+
+
+### Bug Fixes
+
+* **custom-attributes:** do not ignore the result of `tbl_flatten` ([f681bad](https://github.com/Issafalcon/neotest-dotnet/commit/f681bad2ab8af4eeed807a97c5ca294c60022de9))
+* **custom-attributes:** Fix formatting to pass linter ([9d06182](https://github.com/Issafalcon/neotest-dotnet/commit/9d06182a89d2746e6250dc34719ad706045e1c8a))
+* **customattributes:** Adds unit test for standalone custom attribute ([5819656](https://github.com/Issafalcon/neotest-dotnet/commit/581965658105019e8ea722a9d331fb62dcc7e2fb))
+
 ## [1.5.2](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.1...v1.5.2) (2023-12-22)
 
 

@@ -28,6 +28,7 @@ describe("discover_positions", function()
       },
       {
         {
+          framework = "nunit",
           id = spec_file .. "::NUnitSamples",
           is_class = false,
           name = "NUnitSamples",
@@ -37,6 +38,7 @@ describe("discover_positions", function()
         },
         {
           {
+            framework = "nunit",
             id = spec_file .. "::NUnitSamples::SingleTests",
             is_class = true,
             name = "SingleTests",
@@ -46,6 +48,7 @@ describe("discover_positions", function()
           },
           {
             {
+              framework = "nunit",
               id = spec_file .. "::NUnitSamples::SingleTests::Test1",
               is_class = false,
               name = "Test1",

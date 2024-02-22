@@ -1,11 +1,7 @@
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local result_utils = require("neotest-dotnet.utils.result-utils")
-local trx_utils = require("neotest-dotnet.utils.trx-utils")
-local framework_base = require("neotest-dotnet.frameworks.test-framework-base")
-local attribute = require("neotest-dotnet.frameworks.test-attributes")
+local FrameworkDiscovery = require("neotest-dotnet.framework-discovery")
 local build_spec_utils = require("neotest-dotnet.utils.build-spec-utils")
-local neotest_node_tree_utils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap = { adapter_name = "netcoredbg" }
@@ -29,7 +25,7 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     local found_standard_test_attribute
 
     -- Combine all attribute list arrays into one
-    local all_attributes = attribute.all_test_attributes
+    local all_attributes = FrameworkDiscovery.all_test_attributes
 
     for _, test_attribute in ipairs(all_attributes) do
       if string.find(content, "%[" .. test_attribute) then
@@ -60,19 +56,33 @@ DotnetNeotestAdapter.filter_dir = function(name)
 end
 
 DotnetNeotestAdapter._build_position = function(...)
-  return framework_base.build_position(...)
+  local args = { ... }
+
+  logger.debug("neotest-dotnet: Buil Position Args: ")
+  logger.debug(args)
+
+  local framework =
+    FrameworkDiscovery.get_test_framework_utils_from_source(args[2], custom_attribute_args) -- args[2] is the content of the file
+
+  logger.debug("neotest-dotnet: Framework: ")
+  logger.debug(framework)
+
+  return framework.build_position(...)
 end
 
 DotnetNeotestAdapter._position_id = function(...)
-  return framework_base.position_id(...)
+  local args = { ... }
+  local framework = args[1].framework and require("neotest-dotnet." .. args[1].framework)
+    or require("neotest-dotnet.xunit")
+  return framework.position_id(...)
 end
 
---- Implementation of core neotest function.
----@param path any
+---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local content = lib.files.read(path)
-  local test_framework = framework_base.get_test_framework_utils(content, custom_attribute_args)
+  local test_framework =
+    FrameworkDiscovery.get_test_framework_utils_from_source(content, custom_attribute_args)
   local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
 
   local query = [[
@@ -104,7 +114,15 @@ DotnetNeotestAdapter.discover_positions = function(path)
     position_id = "require('neotest-dotnet')._position_id",
   })
 
-  return tree
+  logger.debug("neotest-dotnet: Original Position Tree: ")
+  logger.debug(tree:to_list())
+
+  local modified_tree = test_framework.post_process_tree_list(tree, path)
+
+  logger.debug("neotest-dotnet: Post-processed Position Tree: ")
+  logger.debug(modified_tree:to_list())
+
+  return modified_tree
 end
 
 ---@summary Neotest core interface method: Build specs for running tests
@@ -121,7 +139,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
   logger.debug(specs)
 
-  if args.is_custom_dotnet_debug or args.strategy == "dap" then
+  if args.strategy == "dap" then
     if #specs > 1 then
       logger.warn(
         "neotest-dotnet: DAP strategy does not support multiple test projects. Please debug test projects or individual tests. Falling back to using default strategy."
@@ -129,19 +147,7 @@ DotnetNeotestAdapter.build_spec = function(args)
       args.strategy = "integrated"
       return specs
     else
-      -- Change the strategy to custom netcoredbg strategy and pass in the additional dap args from the user
-      if args.is_custom_dotnet_debug then
-        vim.notify(
-          [[The custom command 
-'run({strategy = require('neotest-dotnet.strategies.netcoredbg'), is_custom_dotnet_debug true})'
-is no longer required. 
-You can now simply use run({strategy = 'dap'}) to debug your tests.
-This custom command will be deprecated in future versions of this adapter.]],
-          vim.log.levels.WARN,
-          { title = "neotest-dotnet" }
-        )
-      end
-      specs[1].dap = dap
+      specs[1].dap_args = dap_args
       specs[1].strategy = require("neotest-dotnet.strategies.netcoredbg")
     end
   end
@@ -160,56 +166,10 @@ DotnetNeotestAdapter.results = function(spec, _, tree)
   logger.debug("neotest-dotnet: Fetching results from neotest tree (as list): ")
   logger.debug(tree:to_list())
 
-  local test_nodes = neotest_node_tree_utils.get_test_nodes_data(tree)
+  local test_framework = FrameworkDiscovery.get_test_framework_utils_from_tree(tree)
+  local results = test_framework.generate_test_results(output_file, tree, spec.context.id)
 
-  logger.debug("neotest-dotnet: Test Nodes: ")
-  logger.debug(test_nodes)
-
-  local parsed_data = trx_utils.parse_trx(output_file)
-  local test_results = parsed_data.TestRun and parsed_data.TestRun.Results
-  local test_definitions = parsed_data.TestRun and parsed_data.TestRun.TestDefinitions
-
-  logger.debug("neotest-dotnet: TRX Results Output: ")
-  logger.debug(test_results)
-
-  logger.debug("neotest-dotnet: TRX Test Definitions Output: ")
-  logger.debug(test_definitions)
-
-  local intermediate_results
-
-  if test_results and test_definitions then
-    if #test_results.UnitTestResult > 1 then
-      test_results = test_results.UnitTestResult
-    end
-    if #test_definitions.UnitTest > 1 then
-      test_definitions = test_definitions.UnitTest
-    end
-
-    intermediate_results = result_utils.create_intermediate_results(test_results, test_definitions)
-  end
-
-  -- No test results. Something went wrong. Check for runtime error
-  if not intermediate_results then
-    return result_utils.get_runtime_error(spec.context.id)
-  end
-
-  logger.info(
-    "neotest-dotnet: Found "
-      .. #test_results
-      .. " test results when parsing TRX file: "
-      .. output_file
-  )
-
-  logger.debug("neotest-dotnet: Intermediate Results: ")
-  logger.debug(intermediate_results)
-
-  local neotest_results =
-    result_utils.convert_intermediate_results(intermediate_results, test_nodes)
-
-  logger.debug("neotest-dotnet: Neotest Results after conversion of Intermediate Results: ")
-  logger.debug(neotest_results)
-
-  return neotest_results
+  return results
 end
 
 setmetatable(DotnetNeotestAdapter, {
