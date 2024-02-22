@@ -14,20 +14,26 @@ describe("discover_positions", function()
     },
   })
 
-  stub(DotnetUtils, "get_test_full_names", function()
-    return {
-      is_complete = true,
-      result = function()
-        return {
-          output = {
-            "XUnitSamples.UnitTest1.Test1",
-            "XUnitSamples.UnitTest1+NestedClass.Test1",
-            "XUnitSamples.UnitTest1+NestedClass.Test2",
-          },
-          result_code = 0,
-        }
-      end,
-    }
+  before_each(function()
+    stub(DotnetUtils, "get_test_full_names", function()
+      return {
+        is_complete = true,
+        result = function()
+          return {
+            output = {
+              "XUnitSamples.UnitTest1.Test1",
+              "XUnitSamples.UnitTest1+NestedClass.Test1",
+              "XUnitSamples.UnitTest1+NestedClass.Test2",
+            },
+            result_code = 0,
+          }
+        end,
+      }
+    end)
+  end)
+
+  after_each(function()
+    DotnetUtils.get_test_full_names:revert()
   end)
 
   async.it("should discover single tests in sub-class", function()

@@ -21,6 +21,9 @@ function M.get_queries(custom_attributes)
           name: (identifier) @attribute_name (#any-of? @attribute_name "Fact" "ClassData" ]] .. custom_fact_attributes .. [[)
           (attribute_argument_list
             (attribute_argument
+                (name_equals
+                  (identifier) @property_name (#match? @property_name "DisplayName$")
+                )
                 (string_literal
                   (string_literal_fragment) @display_name
                 )
