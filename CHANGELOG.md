@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.6.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.3...v1.6.0) (2024-02-22)
+
+
+### Features
+
+* **dotnet-test:** Fixes nesting issue with parameterized tests ([56d3e56](https://github.com/Issafalcon/neotest-dotnet/commit/56d3e56ba584bfe61fa21fdde165e1f5a887b05c))
+* **dotnet-test:** Supports discovery when using custom display name ([8af2c78](https://github.com/Issafalcon/neotest-dotnet/commit/8af2c7889ade9c54b7e96552cd6ac05f0589fe9a))
+* **scope:** Fixes parent name of parameterized tests ([4ebc336](https://github.com/Issafalcon/neotest-dotnet/commit/4ebc336c19646791b75c2ae1a30f2b8e403b9d63))
+* **scope:** Fixes xunit query ([ca5640a](https://github.com/Issafalcon/neotest-dotnet/commit/ca5640a5f82e4ab2d7195ae588412e68c0eb3522))
+
+
+### Bug Fixes
+
+* **dotnet-test:** Fixes discover_positions tests ([afdd1d4](https://github.com/Issafalcon/neotest-dotnet/commit/afdd1d4f54fc8e9ec6aeb7c7f5138fad97cdaf9a))
+* **dotnet-test:** Fixes specflow for xunit ([6e24029](https://github.com/Issafalcon/neotest-dotnet/commit/6e24029d4006feac6d69e43ff5302c926c303de9))
+* **dotnet-test:** Updates mstest framework utils ([ed70202](https://github.com/Issafalcon/neotest-dotnet/commit/ed70202801619e2248f83698bcf8ebb22e7fc035))
+
 ## [1.5.3](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.2...v1.5.3) (2024-02-07)
 
 
