@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.0...v1.6.1) (2024-03-07)
+
+
+### Bug Fixes
+
+* **dap-args:** Fixes dap args after previous PR changes ([41cdee9](https://github.com/Issafalcon/neotest-dotnet/commit/41cdee9536a3b504004fc7d2eefce53b0a1cd56e))
+
 ## [1.6.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.5.3...v1.6.0) (2024-02-22)
 
 
