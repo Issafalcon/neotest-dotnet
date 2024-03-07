@@ -147,7 +147,7 @@ DotnetNeotestAdapter.build_spec = function(args)
       args.strategy = "integrated"
       return specs
     else
-      specs[1].dap_args = dap_args
+      specs[1].dap = dap
       specs[1].strategy = require("neotest-dotnet.strategies.netcoredbg")
     end
   end
