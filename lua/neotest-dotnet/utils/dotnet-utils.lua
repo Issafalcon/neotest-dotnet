@@ -6,6 +6,46 @@ local logger = require("neotest.logging")
 local DotNetUtils = {}
 
 function DotNetUtils.get_test_full_names(project_path)
+  vim.g.neotest_dotnet_test_full_names_cache = vim.g.neotest_dotnet_test_full_names_cache or {}
+  local cache = vim.g.neotest_dotnet_test_full_names_cache or {}
+
+  if cache[project_path] then
+    return {
+      is_complete = function()
+        return cache[project_path].result_code ~= nil
+      end,
+      result = function()
+        logger.debug(
+          "neotest-dotnet: dotnet test already running for "
+            .. project_path
+            .. ". Awaiting results:"
+        )
+        cache[project_path].finish_future:wait()
+        local output = nio.fn.readfile(cache[project_path].stream_path)
+
+        logger.debug(output)
+        return {
+          result_code = cache[project_path].result_code,
+          output = output,
+        }
+      end,
+    }
+  end
+
+  local finish_future = async.control.future()
+  local stream_path = vim.fn.tempname()
+  local result_code
+
+  logger.debug("neotest-dotnet: Running dotnet test for " .. project_path .. " as no cache found.")
+  local cached_project = {
+    stream_path = stream_path,
+    finish_future = finish_future,
+    result_code = result_code,
+  }
+
+  cache[project_path] = cached_project
+  vim.g.neotest_dotnet_test_full_names_cache = cache
+
   local data_accum = FanoutAccum(function(prev, new)
     if not prev then
       return new
@@ -13,7 +53,6 @@ function DotNetUtils.get_test_full_names(project_path)
     return prev .. new
   end, nil)
 
-  local stream_path = vim.fn.tempname()
   local open_err, stream_fd = async.uv.fs_open(stream_path, "w", 438)
   assert(not open_err, open_err)
 
@@ -24,8 +63,6 @@ function DotNetUtils.get_test_full_names(project_path)
   end)
 
   local test_names_started = false
-  local finish_future = async.control.future()
-  local result_code
 
   local test_command = "dotnet test -t " .. project_path .. " -- NUnit.DisplayName=FullName"
   local success, job = pcall(nio.fn.jobstart, test_command, {
@@ -68,6 +105,10 @@ function DotNetUtils.get_test_full_names(project_path)
 
       logger.debug("DotNetUtils.get_test_full_names output: ")
       logger.debug(output)
+
+      cache[project_path] = nil
+      vim.g.neotest_dotnet_test_full_names_cache = cache
+
       return {
         result_code = result_code,
         output = output,
