@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.1...v1.6.2) (2024-03-13)
+
+
+### Bug Fixes
+
+* **xunit:** - Caching dotnet test run to discover names ([209338d](https://github.com/Issafalcon/neotest-dotnet/commit/209338d209674bf714f63a9027c81ef3f849fada))
+
 ## [1.6.1](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.0...v1.6.1) (2024-03-07)
 
 
