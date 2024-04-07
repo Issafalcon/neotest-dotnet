@@ -36,6 +36,57 @@ describe("discover_positions", function()
     DotnetUtils.get_test_full_names:revert()
   end)
 
+  async.it("should discover Fact tests when not the only attribute", function()
+    local spec_file = "./tests/xunit/specs/fact_and_trait.cs"
+    local spec_file_name = "fact_and_trait.cs"
+    local positions = plugin.discover_positions(spec_file):to_list()
+
+    local expected_positions = {
+      {
+        id = spec_file,
+        name = spec_file_name,
+        path = spec_file,
+        range = { 0, 0, 11, 0 },
+        type = "file",
+      },
+      {
+        {
+          framework = "xunit",
+          id = spec_file .. "::xunit.testproj1",
+          is_class = false,
+          name = "xunit.testproj1",
+          path = spec_file,
+          range = { 0, 0, 10, 1 },
+          type = "namespace",
+        },
+        {
+          {
+            framework = "xunit",
+            id = spec_file .. "::xunit.testproj1::UnitTest1",
+            is_class = true,
+            name = "UnitTest1",
+            path = spec_file,
+            range = { 2, 0, 10, 1 },
+            type = "namespace",
+          },
+          {
+            {
+              framework = "xunit",
+              id = spec_file .. "::xunit.testproj1::UnitTest1::Test1",
+              is_class = false,
+              name = "Test1",
+              path = spec_file,
+              range = { 4, 1, 9, 2 },
+              type = "test",
+            },
+          },
+        },
+      },
+    }
+
+    assert.same(positions, expected_positions)
+  end)
+
   async.it("should discover single tests in sub-class", function()
     local spec_file = "./tests/xunit/specs/nested_class.cs"
     local spec_file_name = "nested_class.cs"
