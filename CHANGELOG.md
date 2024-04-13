@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.3](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.2...v1.6.3) (2024-04-13)
+
+
+### Bug Fixes
+
+* **xunit:** TS query for Fact attribute ([8f8ab91](https://github.com/Issafalcon/neotest-dotnet/commit/8f8ab9123e7664c9d0fd4547979d2b9f09b0da89)), closes [#96](https://github.com/Issafalcon/neotest-dotnet/issues/96)
+
 ## [1.6.2](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.1...v1.6.2) (2024-03-13)
 
 
