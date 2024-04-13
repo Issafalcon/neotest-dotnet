@@ -28,9 +28,9 @@ function M.get_queries(custom_attributes)
                   (string_literal_fragment) @display_name
                 )
             )
-          )*
+          )?
         )
-      )+
+      )
       name: (identifier) @test.name
     ) @test.definition
 
