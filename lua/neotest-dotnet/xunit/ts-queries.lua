@@ -21,12 +21,12 @@ function M.get_queries(custom_attributes)
           name: (identifier) @attribute_name (#any-of? @attribute_name "Fact" "ClassData" ]] .. custom_fact_attributes .. [[)
           (attribute_argument_list
             (attribute_argument
-                (name_equals
-                  (identifier) @property_name (#match? @property_name "DisplayName$")
+              (assignment_expression
+                left: (identifier) @property_name (#match? @property_name "DisplayName$")
+                right: (string_literal
+                  (string_literal_content) @display_name
                 )
-                (string_literal
-                  (string_literal_fragment) @display_name
-                )
+              )
             )
           )?
         )
@@ -51,9 +51,12 @@ function M.get_queries(custom_attributes)
           name: (identifier) @attribute_name (#any-of? @attribute_name "Theory")
           (attribute_argument_list
             (attribute_argument
-                (string_literal
-                  (string_literal_fragment) @display_name
+              (assignment_expression
+                left: (identifier) @property_name (#match? @property_name "DisplayName$")
+                right: (string_literal
+                  (string_literal_content) @display_name
                 )
+              )
             )
           )*
         )
