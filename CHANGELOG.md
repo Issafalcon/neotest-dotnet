@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.4](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.3...v1.6.4) (2024-05-26)
+
+
+### Bug Fixes
+
+* **xunit:** TS query for latest parser ([2165a39](https://github.com/Issafalcon/neotest-dotnet/commit/2165a39262ccc3de9ff99be1a427927918c25b42))
+
 ## [1.6.3](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.2...v1.6.3) (2024-04-13)
 
 
