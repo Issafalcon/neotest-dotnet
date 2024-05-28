@@ -281,6 +281,7 @@ M.generate_test_results = function(output_file_path, tree, context_id)
 
       if
         intermediate_result.test_name == node_data.full_name
+        or string.find(intermediate_result.test_name, node_data.full_name, 0, true)
         or intermediate_result.qualified_test_name == BuildSpecUtils.build_test_fqn(node_data.id)
       then
         -- For non-inlined parameterized tests, check if we already have an entry for the test.
