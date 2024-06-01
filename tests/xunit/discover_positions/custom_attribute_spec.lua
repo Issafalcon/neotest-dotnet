@@ -57,38 +57,70 @@ describe("discover_positions", function()
           {
             {
               framework = "xunit",
-              id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples",
-              is_class = false,
-              name = "XUnitSamples",
+              id = "./tests/xunit/specs/custom_attribute.cs::CosmosConnectorTest",
+              is_class = true,
+              name = "CosmosConnectorTest",
               path = "./tests/xunit/specs/custom_attribute.cs",
-              range = { 4, 0, 15, 1 },
+              range = { 6, 0, 15, 1 },
               type = "namespace",
             },
             {
               {
+                display_name = "Custom attribute works ok",
                 framework = "xunit",
-                id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples::CosmosConnectorTest",
-                is_class = true,
-                name = "CosmosConnectorTest",
+                id = "./tests/xunit/specs/custom_attribute.cs::CosmosConnectorTest::Custom_Attribute_Tests",
+                is_class = false,
+                name = "Custom_Attribute_Tests",
                 path = "./tests/xunit/specs/custom_attribute.cs",
-                range = { 6, 0, 15, 1 },
-                type = "namespace",
-              },
-              {
-                {
-                  display_name = "Custom attribute works ok",
-                  framework = "xunit",
-                  id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples::CosmosConnectorTest::Custom_Attribute_Tests",
-                  is_class = false,
-                  name = "Custom_Attribute_Tests",
-                  path = "./tests/xunit/specs/custom_attribute.cs",
-                  range = { 9, 4, 14, 5 },
-                  type = "test",
-                },
+                range = { 9, 4, 14, 5 },
+                type = "test",
               },
             },
           },
         }
+        -- return {
+        --   {
+        --     id = "./tests/xunit/specs/custom_attribute.cs",
+        --     name = "custom_attribute.cs",
+        --     path = "./tests/xunit/specs/custom_attribute.cs",
+        --     range = { 0, 0, 16, 0 },
+        --     type = "file",
+        --   },
+        --   {
+        --     {
+        --       framework = "xunit",
+        --       id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples",
+        --       is_class = false,
+        --       name = "XUnitSamples",
+        --       path = "./tests/xunit/specs/custom_attribute.cs",
+        --       range = { 4, 0, 15, 1 },
+        --       type = "namespace",
+        --     },
+        --     {
+        --       {
+        --         framework = "xunit",
+        --         id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples::CosmosConnectorTest",
+        --         is_class = true,
+        --         name = "CosmosConnectorTest",
+        --         path = "./tests/xunit/specs/custom_attribute.cs",
+        --         range = { 6, 0, 15, 1 },
+        --         type = "namespace",
+        --       },
+        --       {
+        --         {
+        --           display_name = "Custom attribute works ok",
+        --           framework = "xunit",
+        --           id = "./tests/xunit/specs/custom_attribute.cs::XUnitSamples::CosmosConnectorTest::Custom_Attribute_Tests",
+        --           is_class = false,
+        --           name = "Custom_Attribute_Tests",
+        --           path = "./tests/xunit/specs/custom_attribute.cs",
+        --           range = { 9, 4, 14, 5 },
+        --           type = "test",
+        --         },
+        --       },
+        --     },
+        --   },
+        -- }
       end
 
       assert.same(positions, get_expected_output(spec_file, spec_file_name))

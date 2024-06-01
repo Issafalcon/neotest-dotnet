@@ -53,6 +53,7 @@ describe("discover_positions", function()
         }
 
         -- 01-06-2024: c_sharp treesitter parser changes mean file scoped namespaces don't include content of file as their range anymore
+        -- - Other spec files have been modified accoridingly until parse has been fixed
         -- return {
         --   {
         --     id = file_path,
