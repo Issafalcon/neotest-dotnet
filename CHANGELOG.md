@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.6.5](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.4...v1.6.5) (2024-06-01)
+
+
+### Bug Fixes
+
+* **103:** Fixes remaining file scoped namespace tests ([cc56f9c](https://github.com/Issafalcon/neotest-dotnet/commit/cc56f9c50f0146740ab4c9a84fe043197172d1d9))
+* **103:** Installing nio as deps to fix tests ([1ad233e](https://github.com/Issafalcon/neotest-dotnet/commit/1ad233eb83235c84def30636dcc64af456e30e44))
+* **nunit:** Tests fix for one test ([9238353](https://github.com/Issafalcon/neotest-dotnet/commit/923835348685fe90aa660d3d0a6eb2d63e3d5c63))
+
 ## [1.6.4](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.3...v1.6.4) (2024-05-26)
 
 
