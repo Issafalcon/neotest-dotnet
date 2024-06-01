@@ -6,7 +6,7 @@ all:
 # runs all the test files.
 test:
 	nvim --version | head -n 1 && echo ''
-	./scripts/test.sh
+	./tests/test.sh
 
 # installs `mini.nvim`, used for both the tests and documentation.
 deps:
@@ -15,6 +15,7 @@ deps:
 	git clone --depth 1 https://github.com/nvim-neotest/neotest.git deps/neotest
 	git clone --depth 1 https://github.com/nvim-lua/plenary.nvim.git deps/plenary
 	git clone --depth 1 https://github.com/nvim-treesitter/nvim-treesitter.git deps/nvim-treesitter
+	git clone --depth 1 https://github.com/nvim-neotest/nvim-nio deps/nvim-nio
 
 # installs deps before running tests, useful for the CI.
 test-ci: deps test

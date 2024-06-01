@@ -1,6 +1,6 @@
 #!/bin/bash
 tempfile=".test_output.tmp"
-TEST_INIT=scripts/minimal_init.lua
+TEST_INIT=tests/minimal_init.lua
 TEST_DIR=tests/
 
 if [[ -n $1 ]]; then
@@ -9,7 +9,7 @@ if [[ -n $1 ]]; then
 else
   nvim --headless --clean --noplugin -u ${TEST_INIT} \
     -c "set rtp?" \
-    -c "lua vim.cmd([[PlenaryBustedDirectory ${TEST_DIR} { minimal_init = '${TEST_INIT}'}]])" | tee "${tempfile}"
+    -c "lua vim.cmd([[PlenaryBustedDirectory ${TEST_DIR} { minimal_init = '${TEST_INIT}', sequential = true}]])" | tee "${tempfile}"
 fi
 
 # Plenary doesn't emit exit code 1 when tests have errors during setup
