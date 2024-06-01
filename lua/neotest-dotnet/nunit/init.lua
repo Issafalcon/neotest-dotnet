@@ -276,7 +276,7 @@ M.generate_test_results = function(output_file_path, tree, context_id)
 
       -- Use the full_name of the test, including namespace
       local is_match = #result_test_name == #node_data.full_name
-        and string.find(result_test_name, node_data.full_name, 0, true)
+        or string.find(result_test_name, node_data.full_name, 0, true)
 
       if is_match then
         -- For non-inlined parameterized tests, check if we already have an entry for the test.
