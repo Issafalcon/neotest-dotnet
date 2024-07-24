@@ -50,6 +50,7 @@ return function(spec)
           if
             string.find(output, "Waiting for debugger attach...")
             or string.find(output, "Please attach debugger")
+            or string.find(output, "Process Id:")
           then
             waitingForDebugger = true
           end
