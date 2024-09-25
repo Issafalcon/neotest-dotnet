@@ -2,12 +2,21 @@ local framework_discovery = require("neotest-dotnet.framework-discovery")
 
 local M = {}
 
-function M.get_queries(custom_attributes)
-  -- Don't include parameterized test attribute indicators so we don't double count them
-  local custom_fact_attributes = custom_attributes
-      and framework_discovery.join_test_attributes(custom_attributes.xunit)
-    or ""
+local function get_fsharp_queries(custom_fact_attributes)
+  return [[
+    ;; Matches test methods
+    (declaration_expression
+      (attributes
+        (attribute
+          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "Fact")))))
+      (function_or_value_defn
+        (function_declaration_left
+          (identifier) @test.name))
+    ) @test.definition
+  ]]
+end
 
+local function get_csharp_queries(custom_fact_attributes)
   return [[
     ;; Matches XUnit test class (has no specific attributes on class)
     (class_declaration
@@ -74,6 +83,17 @@ function M.get_queries(custom_attributes)
       ) @parameter_list
     ) @test.definition
   ]]
+end
+
+function M.get_queries(lang, custom_attributes)
+  -- Don't include parameterized test attribute indicators so we don't double count them
+  local custom_fact_attributes = custom_attributes
+      and framework_discovery.join_test_attributes(custom_attributes.xunit)
+    or ""
+
+  return (lang == "c_sharp" and get_csharp_queries(custom_fact_attributes))
+    or (lang == "fsharp" and get_fsharp_queries(custom_fact_attributes))
+    or ""
 end
 
 return M

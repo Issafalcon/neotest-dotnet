@@ -11,8 +11,8 @@ local Tree = types.Tree
 ---@diagnostic disable-next-line: missing-fields
 local M = {}
 
-function M.get_treesitter_queries(custom_attribute_args)
-  return require("neotest-dotnet.xunit.ts-queries").get_queries(custom_attribute_args)
+function M.get_treesitter_queries(lang, custom_attribute_args)
+  return require("neotest-dotnet.xunit.ts-queries").get_queries(lang, custom_attribute_args)
 end
 
 local get_node_type = function(captured_nodes)
