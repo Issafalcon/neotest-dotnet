@@ -73,12 +73,12 @@ function M.join_test_attributes(attributes)
   return joined_attributes
 end
 
-function M.get_test_framework_utils_from_source(source, custom_attribute_args)
+function M.get_test_framework_utils_from_source(lang, source, custom_attribute_args)
   local xunit_attributes = M.attribute_match_list(custom_attribute_args, "xunit")
   local mstest_attributes = M.attribute_match_list(custom_attribute_args, "mstest")
   local nunit_attributes = M.attribute_match_list(custom_attribute_args, "nunit")
 
-  local framework_query = [[
+  local c_sharp_query = [[
       (attribute
         name: (identifier) @attribute_name (#any-of? @attribute_name ]] .. xunit_attributes .. " " .. nunit_attributes .. " " .. mstest_attributes .. [[)
       )
@@ -96,11 +96,20 @@ function M.get_test_framework_utils_from_source(source, custom_attribute_args)
       )
   ]]
 
+  local fsharp_query = [[
+        (attribute 
+          (simple_type 
+            (long_identifier (identifier) @attribute_name (#any-of? @attribute_name ]] .. xunit_attributes .. " " .. nunit_attributes .. " " .. mstest_attributes .. [[)))
+        )
+    ]]
+
+  local framework_query = lang == "fsharp" and fsharp_query or c_sharp_query
+
   async.scheduler()
-  local root = vim.treesitter.get_string_parser(source, "c_sharp"):parse()[1]:root()
+  local root = vim.treesitter.get_string_parser(source, lang):parse()[1]:root()
   local parsed_query = vim.fn.has("nvim-0.9.0") == 1
-      and vim.treesitter.query.parse("c_sharp", framework_query)
-    or vim.treesitter.parse_query("c_sharp", framework_query)
+      and vim.treesitter.query.parse(lang, framework_query)
+    or vim.treesitter.parse_query(lang, framework_query)
   for _, captures in parsed_query:iter_matches(root, source) do
     local test_attribute = vim.fn.has("nvim-0.9.0") == 1
         and vim.treesitter.get_node_text(captures[1], source)

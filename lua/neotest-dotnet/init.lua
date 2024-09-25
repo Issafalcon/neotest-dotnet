@@ -28,7 +28,7 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     local all_attributes = FrameworkDiscovery.all_test_attributes
 
     for _, test_attribute in ipairs(all_attributes) do
-      if string.find(content, "%[" .. test_attribute) then
+      if string.find(content, "%[<?" .. test_attribute) then
         found_standard_test_attribute = true
         break
       end
@@ -37,7 +37,7 @@ DotnetNeotestAdapter.is_test_file = function(file_path)
     if custom_attribute_args then
       for _, framework_attrs in pairs(custom_attribute_args) do
         for _, value in ipairs(framework_attrs) do
-          if string.find(content, "%[" .. value) then
+          if string.find(content, "%[<?" .. value) then
             found_derived_attribute = true
             break
           end
@@ -80,32 +80,41 @@ end
 ---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
+  local lang = nil
+
+  if lib.files.match_root_pattern("*.fsproj")(path) then
+    lang = "fsharp"
+  else
+    lang = "c_sharp"
+  end
+
   local content = lib.files.read(path)
   local test_framework =
-    FrameworkDiscovery.get_test_framework_utils_from_source(content, custom_attribute_args)
-  local framework_queries = test_framework.get_treesitter_queries(custom_attribute_args)
+    FrameworkDiscovery.get_test_framework_utils_from_source(lang, content, custom_attribute_args)
+  local framework_queries = test_framework.get_treesitter_queries(lang, custom_attribute_args)
 
-  local query = [[
-    ;; --Namespaces
-    ;; Matches namespace with a '.' in the name
-    (namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches namespace with a single identifier (no '.')
-    (namespace_declaration
-        name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches file-scoped namespaces (qualified and unqualified respectively)
-    (file_scoped_namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
-
-    (file_scoped_namespace_declaration
-        name: (identifier) @namespace.name
-    ) @namespace.definition
-  ]] .. framework_queries
+  -- local query = [[
+  --   ;; --Namespaces
+  --   ;; Matches namespace with a '.' in the name
+  --   (namespace_declaration
+  --       name: (qualified_name) @namespace.name
+  --   ) @namespace.definition
+  --
+  --   ;; Matches namespace with a single identifier (no '.')
+  --   (namespace_declaration
+  --       name: (identifier) @namespace.name
+  --   ) @namespace.definition
+  --
+  --   ;; Matches file-scoped namespaces (qualified and unqualified respectively)
+  --   (file_scoped_namespace_declaration
+  --       name: (qualified_name) @namespace.name
+  --   ) @namespace.definition
+  --
+  --   (file_scoped_namespace_declaration
+  --       name: (identifier) @namespace.name
+  --   ) @namespace.definition
+  -- ]] .. framework_queries
+  local query = framework_queries
 
   local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,

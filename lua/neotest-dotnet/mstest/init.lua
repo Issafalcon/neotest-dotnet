@@ -74,7 +74,7 @@ local get_match_type = function(captured_nodes)
   end
 end
 
-function M.get_treesitter_queries(custom_attribute_args)
+function M.get_treesitter_queries(lang, custom_attribute_args)
   return require("neotest-dotnet.mstest.ts-queries").get_queries(custom_attribute_args)
 end
 
