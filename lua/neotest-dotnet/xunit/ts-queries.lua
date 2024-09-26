@@ -4,14 +4,37 @@ local M = {}
 
 local function get_fsharp_queries(custom_fact_attributes)
   return [[
-    ;; Matches test methods
+    ;; Matches XUnit test class (has no specific attributes on class)
+    (anon_type_defn
+       (type_name (identifier) @class.name)
+    ) @class.definition
+
+    (named_module
+        name: (long_identifier) @class.name
+    ) @class.definition
+
+    (module_defn
+        (identifier) @class.name
+    ) @class.definition
+
+    ;; Matches test functions
     (declaration_expression
       (attributes
         (attribute
-          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "Fact")))))
+          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "Fact" "ClassData" ]] .. custom_fact_attributes .. [[)))))
       (function_or_value_defn
         (function_declaration_left
           (identifier) @test.name))
+    ) @test.definition
+
+    ;; Matches test functions
+    (member_defn
+      (attributes
+        (attribute
+          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "Fact" "ClassData" ]] .. custom_fact_attributes .. [[)))))
+      (method_or_prop_defn
+        (property_or_ident
+           (identifier) @test.name .))
     ) @test.definition
   ]]
 end

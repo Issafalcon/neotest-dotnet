@@ -93,7 +93,7 @@ end
 ---@param tree neotest.Tree The tree to modify
 ---@param path string The path to the file the tree was built from
 M.post_process_tree_list = function(tree, path)
-  local proj_root = lib.files.match_root_pattern("*.csproj")(path)
+  local proj_root = lib.files.match_root_pattern("*.[cf]sproj")(path)
   local test_list_job = DotnetUtils.get_test_full_names(proj_root)
   local dotnet_tests = test_list_job.result().output
   local tree_as_list = tree:to_list()

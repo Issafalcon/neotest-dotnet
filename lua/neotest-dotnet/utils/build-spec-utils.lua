@@ -74,7 +74,7 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
   -- Adapted from https://github.com/nvim-neotest/neotest/blob/392808a91d6ee28d27cbfb93c9fd9781759b5d00/lua/neotest/lib/file/init.lua#L341
   if position.type == "dir" then
     -- Check to see if we are in a project root
-    local proj_files = async.fn.glob(Path:new(position.path, "*.csproj").filename, true, true)
+    local proj_files = async.fn.glob(Path:new(position.path, "*.[cf]sproj").filename, true, true)
     logger.debug("neotest-dotnet: Found " .. #proj_files .. " project files in " .. position.path)
 
     if #proj_files >= 1 then
@@ -101,12 +101,12 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
     local fqn = BuildSpecUtils.build_test_fqn(position.running_id or position.id)
     local filter = '--filter FullyQualifiedName~"' .. fqn .. '"'
 
-    local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
+    local proj_root = lib.files.match_root_pattern("*.[cf]sproj")(position.path)
     local spec =
       BuildSpecUtils.create_single_spec(position, proj_root, filter, dotnet_additional_args)
     table.insert(specs, spec)
   elseif position.type == "file" then
-    local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
+    local proj_root = lib.files.match_root_pattern("*.[cf]sproj")(position.path)
 
     local spec = BuildSpecUtils.create_single_spec(position, proj_root, "", dotnet_additional_args)
     table.insert(specs, spec)
