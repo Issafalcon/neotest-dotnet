@@ -6,7 +6,7 @@ local M = {}
 ---@param position_id string The position_id of the neotest test node
 ---@return string The fully qualified name of the test
 function M.get_qualified_test_name_from_id(position_id)
-  local _, first_colon_end = string.find(position_id, ".cs::")
+  local _, first_colon_end = string.find(position_id, ".[cf]s::")
   local full_name = string.sub(position_id, first_colon_end + 1)
   full_name = string.gsub(full_name, "::", ".")
   return full_name

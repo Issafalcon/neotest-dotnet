@@ -9,11 +9,19 @@ local custom_attribute_args
 local dotnet_additional_args
 local discovery_root = "project"
 
+require("plenary.filetype").add_table({
+  extension = {
+    ["fs"] = [[fsharp]],
+    ["fsx"] = [[fsharp]],
+    ["fsi"] = [[fsharp]],
+  },
+})
+
 DotnetNeotestAdapter.root = function(path)
   if discovery_root == "solution" then
     return lib.files.match_root_pattern("*.sln")(path)
   else
-    return lib.files.match_root_pattern("*.csproj", "*.fsproj")(path)
+    return lib.files.match_root_pattern("*.[cf]sproj")(path)
   end
 end
 
@@ -61,7 +69,7 @@ DotnetNeotestAdapter._build_position = function(...)
   logger.debug("neotest-dotnet: Buil Position Args: ")
   logger.debug(args)
 
-  local lang = lib.files.match_root_pattern("*.fsproj")(args[1]) and "fsharp" or "c_sharp"
+  local lang = lib.files.match_root_pattern("*.fsproj")(args[1]) and "fsharp" or "c_sharp" -- args[1] is the file path
 
   local framework =
     FrameworkDiscovery.get_test_framework_utils_from_source(lang, args[2], custom_attribute_args) -- args[2] is the content of the file
@@ -82,14 +90,14 @@ end
 ---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
-  local lang = lib.files.match_root_pattern("*.fsproj")(path) and "fsharp" or "c_sharp"
+  local lang = vim.endswith(path, ".fs") and "fsharp" or "c_sharp"
 
   local content = lib.files.read(path)
   local test_framework =
     FrameworkDiscovery.get_test_framework_utils_from_source(lang, content, custom_attribute_args)
   local framework_queries = test_framework.get_treesitter_queries(lang, custom_attribute_args)
 
-  local query = [[
+  local csharp_query = [[
     ;; --Namespaces
     ;; Matches namespace with a '.' in the name
     (namespace_declaration
@@ -109,7 +117,15 @@ DotnetNeotestAdapter.discover_positions = function(path)
     (file_scoped_namespace_declaration
         name: (identifier) @namespace.name
     ) @namespace.definition
-  ]] .. framework_queries
+  ]]
+
+  local fsharp_query = [[
+    (namespace
+        name: (long_identifier) @namespace.name
+    ) @namespace.definition
+  ]]
+
+  local query = (lang == "fsharp" and fsharp_query or csharp_query) .. framework_queries
 
   local tree = lib.treesitter.parse_positions(path, query, {
     nested_namespaces = true,
