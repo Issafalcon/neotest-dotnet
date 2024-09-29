@@ -69,7 +69,7 @@ DotnetNeotestAdapter._build_position = function(...)
   logger.debug("neotest-dotnet: Buil Position Args: ")
   logger.debug(args)
 
-  local lang = lib.files.match_root_pattern("*.fsproj")(args[1]) and "fsharp" or "c_sharp" -- args[1] is the file path
+  local lang = vim.endswith(args[1], ".fs") and "fsharp" or "c_sharp" -- args[1] is the file path
 
   local framework =
     FrameworkDiscovery.get_test_framework_utils_from_source(lang, args[2], custom_attribute_args) -- args[2] is the content of the file

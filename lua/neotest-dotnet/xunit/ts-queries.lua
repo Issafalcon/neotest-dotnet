@@ -27,7 +27,7 @@ local function get_fsharp_queries(custom_fact_attributes)
           (identifier) @test.name))
     ) @test.definition
 
-    ;; Matches test functions
+    ;; Matches test methods
     (member_defn
       (attributes
         (attribute
@@ -35,6 +35,28 @@ local function get_fsharp_queries(custom_fact_attributes)
       (method_or_prop_defn
         (property_or_ident
            (identifier) @test.name .))
+    ) @test.definition
+
+    ;; Matches test parameterized function
+    (declaration_expression
+      (attributes
+        (attribute
+          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "Theory")))))
+      (function_or_value_defn
+        (function_declaration_left
+           (identifier) @test.name
+           (argument_patterns) @parameter_list))
+    ) @test.definition
+
+    ;; Matches test parameterized methods
+    (member_defn
+      (attributes
+        (attribute
+          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "Theory")))))
+      (method_or_prop_defn
+        (property_or_ident
+           (identifier) @test.name .)
+         args: (_) @parameter_list)
     ) @test.definition
   ]]
 end
@@ -114,9 +136,8 @@ function M.get_queries(lang, custom_attributes)
       and framework_discovery.join_test_attributes(custom_attributes.xunit)
     or ""
 
-  return (lang == "c_sharp" and get_csharp_queries(custom_fact_attributes))
-    or (lang == "fsharp" and get_fsharp_queries(custom_fact_attributes))
-    or ""
+  return lang == "fsharp" and get_fsharp_queries(custom_fact_attributes)
+    or get_csharp_queries(custom_fact_attributes)
 end
 
 return M
