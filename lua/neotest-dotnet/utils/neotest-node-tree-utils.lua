@@ -1,5 +1,12 @@
 local M = {}
 
+---@param identifier string the fsharp identifier to sanitize
+---@return string The sanitized identifier
+function M.sanitize_fsharp_identifiers(identifier)
+  local sanitized, _ = string.gsub(identifier, "``([^`]*)``", "%1")
+  return sanitized
+end
+
 --- Assuming a position_id of the form "C:\path\to\file.cs::namespace::class::method",
 ---   with the rule that the first :: is the separator between the file path and the rest of the position_id,
 ---   returns the '.' separated fully qualified name of the test, with each segment corresponding to the namespace, class, and method.
@@ -25,10 +32,11 @@ function M.get_test_nodes_data(tree)
     if
       node:data().framework == "xunit" --[[ or node:data().framework == "nunit" ]]
     then
-      node:data().full_name = node:data().name
+      -- local full_name = string.gsub(node:data().name, "``(.*)``", "%1")
+      node:data().full_name = M.sanitize_fsharp_identifiers(node:data().name)
     else
       local full_name = M.get_qualified_test_name_from_id(node:data().id)
-      node:data().full_name = full_name
+      node:data().full_name = M.sanitize_fsharp_identifiers(full_name)
     end
   end
 

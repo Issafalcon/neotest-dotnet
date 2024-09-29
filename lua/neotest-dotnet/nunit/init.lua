@@ -7,20 +7,35 @@ local NodeTreeUtils = require("neotest-dotnet.utils.neotest-node-tree-utils")
 local M = {}
 
 ---Builds a position from captured nodes, optionally parsing parameters to create sub-positions.
+---@param lang string language of the treesitter parser to use
 ---@param base_node table The initial root node to build the positions from
 ---@param source any The source code to build the positions from
 ---@param captured_nodes any The nodes captured by the TS query
 ---@param match_type string The type of node that was matched by the TS query
 ---@return table
-local build_parameterized_test_positions = function(base_node, source, captured_nodes, match_type)
+local build_parameterized_test_positions = function(
+  lang,
+  base_node,
+  source,
+  captured_nodes,
+  match_type
+)
   logger.debug("neotest-dotnet(NUnit Utils): Building parameterized test positions from source")
   logger.debug("neotest-dotnet(NUnit Utils): Base node: ")
   logger.debug(base_node)
 
   logger.debug("neotest-dotnet(NUnit Utils): Match Type: " .. match_type)
 
-  local query = [[
-    ;;query
+  local fsharp_query = [[
+    (attributes
+      (attribute
+        (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "TestCase")))
+        (_) @arguments
+      )
+    )
+  ]]
+
+  local csharp_query = [[
     (attribute_list
       (attribute
         name: (identifier) @attribute_name (#any-of? @attribute_name "TestCase")
@@ -29,8 +44,10 @@ local build_parameterized_test_positions = function(base_node, source, captured_
     )
   ]]
 
-  local param_query = vim.fn.has("nvim-0.9.0") == 1 and vim.treesitter.query.parse("c_sharp", query)
-    or vim.treesitter.parse_query("c_sharp", query)
+  local query = lang == "fsharp" and fsharp_query or csharp_query
+
+  local param_query = vim.fn.has("nvim-0.9.0") == 1 and vim.treesitter.query.parse(lang, query)
+    or vim.treesitter.parse_query(lang, query)
 
   -- Set type to test (otherwise it will be test.parameterized)
   local parameterized_test_node = vim.tbl_extend("force", base_node, { type = "test" })
@@ -75,10 +92,11 @@ local get_match_type = function(captured_nodes)
 end
 
 function M.get_treesitter_queries(lang, custom_attribute_args)
-  return require("neotest-dotnet.nunit.ts-queries").get_queries(custom_attribute_args)
+  return require("neotest-dotnet.nunit.ts-queries").get_queries(lang, custom_attribute_args)
 end
 
 M.build_position = function(file_path, source, captured_nodes)
+  local lang = vim.endswith(file_path, ".fs") and "fsharp" or "c_sharp"
   local match_type = get_match_type(captured_nodes)
 
   local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
@@ -107,7 +125,7 @@ M.build_position = function(file_path, source, captured_nodes)
     return node
   end
 
-  return build_parameterized_test_positions(node, source, captured_nodes, match_type)
+  return build_parameterized_test_positions(lang, node, source, captured_nodes, match_type)
 end
 
 M.position_id = function(position, parents)
