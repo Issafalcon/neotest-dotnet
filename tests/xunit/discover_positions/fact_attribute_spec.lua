@@ -278,38 +278,51 @@ describe("discover_positions", function()
     local spec_file_name = "fact_and_trait.fs"
     local positions = plugin.discover_positions(spec_file):to_list()
 
+    vim.print(positions)
+
     local expected_positions = {
       {
-        id = spec_file,
-        name = spec_file_name,
-        path = spec_file,
-        range = { 0, 0, 11, 0 },
+        id = "./tests/xunit/specs/fact_and_trait.fs",
+        name = "fact_and_trait.fs",
+        path = "./tests/xunit/specs/fact_and_trait.fs",
+        range = { 0, 0, 7, 0 },
         type = "file",
       },
       {
         {
           framework = "xunit",
-          id = spec_file .. "::UnitTest1",
-          is_class = true,
-          name = "UnitTest1",
-          path = spec_file,
-          range = { 2, 0, 10, 1 },
+          id = "./tests/xunit/specs/fact_and_trait.fs::xunit.testproj1",
+          is_class = false,
+          name = "xunit.testproj1",
+          path = "./tests/xunit/specs/fact_and_trait.fs",
+          range = { 0, 0, 6, 22 },
           type = "namespace",
         },
         {
           {
             framework = "xunit",
-            id = spec_file .. "::UnitTest1::Test1",
-            is_class = false,
-            name = "XUnitSamples.UnitTest1.Test1",
-            path = spec_file,
-            range = { 4, 1, 9, 2 },
-            running_id = "./tests/xunit/specs/fact_and_trait.fs::UnitTest1::Test1",
-            type = "test",
+            id = "./tests/xunit/specs/fact_and_trait.fs::xunit.testproj1::UnitTest1",
+            is_class = true,
+            name = "UnitTest1",
+            path = "./tests/xunit/specs/fact_and_trait.fs",
+            range = { 2, 5, 6, 22 },
+            type = "namespace",
+          },
+          {
+            {
+              framework = "xunit",
+              id = "./tests/xunit/specs/fact_and_trait.fs::xunit.testproj1::UnitTest1::Test1",
+              is_class = false,
+              name = "Test1",
+              path = "./tests/xunit/specs/fact_and_trait.fs",
+              range = { 3, 1, 6, 22 },
+              type = "test",
+            },
           },
         },
       },
     }
-    assert.same(positions, expected_positions)
+
+    assert.same(expected_positions, positions)
   end)
 end)

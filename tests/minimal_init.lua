@@ -23,7 +23,7 @@ if #vim.api.nvim_list_uis() == 0 then
 
   -- Setup test plugin dependencies
   require("nvim-treesitter.configs").setup({
-    ensure_installed = "c_sharp",
+    ensure_installed = { "c_sharp", "fsharp" },
     sync_install = true,
     highlight = {
       enable = false,
