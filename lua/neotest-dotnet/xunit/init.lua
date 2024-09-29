@@ -278,11 +278,10 @@ M.generate_test_results = function(output_file_path, tree, context_id)
   for _, intermediate_result in ipairs(intermediate_results) do
     for _, node in ipairs(test_nodes) do
       local node_data = node:data()
-      local full_name, _ = node_data.full_name:gsub("``(.*)``", "%1")
 
       if
-        intermediate_result.test_name == full_name
-        or string.find(intermediate_result.test_name, full_name, 0, true)
+        intermediate_result.test_name == node_data.full_name
+        or string.find(intermediate_result.test_name, node_data.full_name, 0, true)
         or intermediate_result.qualified_test_name == BuildSpecUtils.build_test_fqn(node_data.id)
       then
         -- For non-inlined parameterized tests, check if we already have an entry for the test.

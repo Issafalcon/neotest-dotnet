@@ -278,12 +278,10 @@ describe("discover_positions", function()
     local spec_file_name = "fact_and_trait.fs"
     local positions = plugin.discover_positions(spec_file):to_list()
 
-    vim.print(positions)
-
     local expected_positions = {
       {
         id = "./tests/xunit/specs/fact_and_trait.fs",
-        name = "fact_and_trait.fs",
+        name = spec_file_name,
         path = "./tests/xunit/specs/fact_and_trait.fs",
         range = { 0, 0, 7, 0 },
         type = "file",
