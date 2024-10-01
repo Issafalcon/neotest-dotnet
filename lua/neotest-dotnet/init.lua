@@ -1,195 +1,303 @@
+local nio = require("nio")
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
-local FrameworkDiscovery = require("neotest-dotnet.framework-discovery")
-local build_spec_utils = require("neotest-dotnet.utils.build-spec-utils")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap = { adapter_name = "netcoredbg" }
-local custom_attribute_args
-local dotnet_additional_args
-local discovery_root = "project"
 
-require("plenary.filetype").add_table({
-  extension = {
-    ["fs"] = [[fsharp]],
-    ["fsx"] = [[fsharp]],
-    ["fsi"] = [[fsharp]],
-  },
-})
-
-DotnetNeotestAdapter.root = function(path)
-  if discovery_root == "solution" then
-    return lib.files.match_root_pattern("*.sln")(path)
-  else
-    return lib.files.match_root_pattern("*.[cf]sproj")(path)
+local function get_script(script_name)
+  local script_paths = vim.api.nvim_get_runtime_file(script_name, true)
+  for _, path in ipairs(script_paths) do
+    if vim.endswith(path, ("neotest-dotnet%s" .. script_name):format(lib.files.sep)) then
+      return path
+    end
   end
 end
 
+local function test_discovery_args(test_application_dll)
+  local test_discovery_script = get_script("parse_tests.fsx")
+  local testhost_dll = "/usr/local/share/dotnet/sdk/8.0.401/vstest.console.dll"
+
+  return { "fsi", test_discovery_script, testhost_dll, test_application_dll }
+end
+
+local function run_test_command(id, output_path, test_application_dll)
+  local test_discovery_script = get_script("run_tests.fsx")
+  local testhost_dll = "/usr/local/share/dotnet/sdk/8.0.401/vstest.console.dll"
+
+  return {
+    "dotnet",
+    "fsi",
+    test_discovery_script,
+    testhost_dll,
+    output_path,
+    id,
+    test_application_dll,
+  }
+end
+
+DotnetNeotestAdapter.root = function(path)
+  return lib.files.match_root_pattern("*.sln")(path)
+    or lib.files.match_root_pattern("*.[cf]sproj")(path)
+end
+
 DotnetNeotestAdapter.is_test_file = function(file_path)
-  if vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs") then
-    local content = lib.files.read(file_path)
-
-    local found_derived_attribute
-    local found_standard_test_attribute
-
-    -- Combine all attribute list arrays into one
-    local all_attributes = FrameworkDiscovery.all_test_attributes
-
-    for _, test_attribute in ipairs(all_attributes) do
-      if string.find(content, "%[<?" .. test_attribute) then
-        found_standard_test_attribute = true
-        break
-      end
-    end
-
-    if custom_attribute_args then
-      for _, framework_attrs in pairs(custom_attribute_args) do
-        for _, value in ipairs(framework_attrs) do
-          if string.find(content, "%[<?" .. value) then
-            found_derived_attribute = true
-            break
-          end
-        end
-      end
-    end
-
-    return found_standard_test_attribute or found_derived_attribute
-  else
-    return false
-  end
+  return vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs")
 end
 
 DotnetNeotestAdapter.filter_dir = function(name)
   return name ~= "bin" and name ~= "obj"
 end
 
-DotnetNeotestAdapter._build_position = function(...)
-  local args = { ... }
+local fsharp_query = [[
+(namespace
+    name: (long_identifier) @namespace.name
+) @namespace.definition
 
-  logger.debug("neotest-dotnet: Buil Position Args: ")
-  logger.debug(args)
+(anon_type_defn
+   (type_name (identifier) @namespace.name)
+) @namespace.definition
 
-  local lang = vim.endswith(args[1], ".fs") and "fsharp" or "c_sharp" -- args[1] is the file path
+(named_module
+    name: (long_identifier) @namespace.name
+) @namespace.definition
 
-  local framework =
-    FrameworkDiscovery.get_test_framework_utils_from_source(lang, args[2], custom_attribute_args) -- args[2] is the content of the file
+(module_defn
+    (identifier) @namespace.name
+) @namespace.definition
 
-  logger.debug("neotest-dotnet: Framework: ")
-  logger.debug(framework)
+(declaration_expression
+  (function_or_value_defn
+    (function_declaration_left . (_) @test.name)
+  ) @test.definition)
 
-  return framework.build_position(...)
+(member_defn
+  (method_or_prop_defn
+    (property_or_ident
+       (identifier) @test.name .)
+  ) @test.definition) 
+]]
+
+local cache = {}
+
+local function discover_tests(proj_dll_path)
+  local open_err, file_fd = nio.uv.fs_open(proj_dll_path, "r", 444)
+  assert(not open_err, open_err)
+  local stat_err, stat = nio.uv.fs_fstat(file_fd)
+  assert(not stat_err, stat_err)
+  nio.uv.fs_close(file_fd)
+  cache[proj_dll_path] = cache[proj_dll_path] or {}
+  if cache.last_cached == nil or cache.last_cached < stat.mtime.sec then
+    local discovery = nio.process.run({ cmd = "dotnet", args = test_discovery_args(proj_dll_path) })
+    cache[proj_dll_path].data = vim.json.decode(discovery.stdout.read())
+    cache[proj_dll_path].last_cached = stat.mtime.sec
+    discovery.close()
+  end
+  return cache[proj_dll_path].data
 end
 
-DotnetNeotestAdapter._position_id = function(...)
-  local args = { ... }
-  local framework = args[1].framework and require("neotest-dotnet." .. args[1].framework)
-    or require("neotest-dotnet.xunit")
-  return framework.position_id(...)
+local function get_match_type(captured_nodes)
+  if captured_nodes["test.name"] then
+    return "test"
+  end
+  if captured_nodes["namespace.name"] then
+    return "namespace"
+  end
+end
+
+local proj_file_path_map = {}
+
+local function get_proj_file(path)
+  if proj_file_path_map[path] then
+    return proj_file_path_map[path]
+  end
+
+  local proj_file = vim.fs.find(function(name, _)
+    return name:match("%.[cf]sproj$")
+  end, { type = "file", path = vim.fs.dirname(path) })[1]
+
+  local dir_name = vim.fs.dirname(proj_file)
+  local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
+
+  local proj_dll_path =
+    vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
+
+  proj_file_path_map[path] = proj_dll_path
+  return proj_dll_path
 end
 
 ---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
-  local lang = vim.endswith(path, ".fs") and "fsharp" or "c_sharp"
+  local filetype = (vim.endswith(path, ".fs") and "fsharp") or "c_sharp"
+  local proj_dll_path = get_proj_file(path)
 
-  local content = lib.files.read(path)
-  local test_framework =
-    FrameworkDiscovery.get_test_framework_utils_from_source(lang, content, custom_attribute_args)
-  local framework_queries = test_framework.get_treesitter_queries(lang, custom_attribute_args)
+  local tests_in_file = vim
+    .iter(discover_tests(proj_dll_path))
+    :filter(function(test)
+      return test.FilePath == path
+    end)
+    :totable()
 
-  local csharp_query = [[
-    ;; --Namespaces
-    ;; Matches namespace with a '.' in the name
-    (namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
+  local tree = {}
 
-    ;; Matches namespace with a single identifier (no '.')
-    (namespace_declaration
-        name: (identifier) @namespace.name
-    ) @namespace.definition
+  ---@return nil | neotest.Position | neotest.Position[]
+  local function build_position(source, captured_nodes)
+    local match_type = get_match_type(captured_nodes)
+    if match_type then
+      local definition = captured_nodes[match_type .. ".definition"]
 
-    ;; Matches file-scoped namespaces (qualified and unqualified respectively)
-    (file_scoped_namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
+      local positions = {}
 
-    (file_scoped_namespace_declaration
-        name: (identifier) @namespace.name
-    ) @namespace.definition
-  ]]
+      if match_type == "test" then
+        for _, test in ipairs(tests_in_file) do
+          if test.LineNumber == definition:start() + 1 then
+            table.insert(positions, {
+              id = test.Id,
+              type = match_type,
+              path = path,
+              name = test.Name,
+              qualified_name = test.Namespace,
+              proj_dll_path = proj_dll_path,
+              range = { definition:range() },
+            })
+          end
+        end
+      else
+        local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
+        table.insert(positions, {
+          type = match_type,
+          path = path,
+          name = string.gsub(name, "``", ""),
+          proj_dll_path = proj_dll_path,
+          range = { definition:range() },
+        })
+      end
+      return positions
+    end
+  end
 
-  local fsharp_query = [[
-    (namespace
-        name: (long_identifier) @namespace.name
-    ) @namespace.definition
-  ]]
+  if #tests_in_file > 0 then
+    local content = lib.files.read(path)
+    local lang = vim.treesitter.language.get_lang(filetype) or filetype
+    nio.scheduler()
+    local lang_tree =
+      vim.treesitter.get_string_parser(content, lang, { injections = { [lang] = "" } })
 
-  local query = (lang == "fsharp" and fsharp_query or csharp_query) .. framework_queries
+    local root = lib.treesitter.fast_parse(lang_tree):root()
 
-  local tree = lib.treesitter.parse_positions(path, query, {
-    nested_namespaces = true,
-    nested_tests = true,
-    build_position = "require('neotest-dotnet')._build_position",
-    position_id = "require('neotest-dotnet')._position_id",
-  })
+    local query = lib.treesitter.normalise_query(lang, fsharp_query)
 
-  logger.debug("neotest-dotnet: Original Position Tree: ")
-  logger.debug(tree:to_list())
+    local sep = lib.files.sep
+    local path_elems = vim.split(path, sep, { plain = true })
+    local nodes = {
+      {
+        type = "file",
+        path = path,
+        name = path_elems[#path_elems],
+        range = { root:range() },
+      },
+    }
+    for _, match in query:iter_matches(root, content, nil, nil, { all = false }) do
+      local captured_nodes = {}
+      for i, capture in ipairs(query.captures) do
+        captured_nodes[capture] = match[i]
+      end
+      local res = build_position(content, captured_nodes)
+      if res then
+        for _, pos in ipairs(res) do
+          nodes[#nodes + 1] = pos
+        end
+      end
+    end
 
-  local modified_tree = test_framework.post_process_tree_list(tree, path)
+    tree = lib.positions.parse_tree(nodes, {
+      nested_tests = true,
+      require_namespaces = false,
+      position_id = function(position, parents)
+        return position.id
+          or vim
+            .iter({
+              position.path,
+              vim.tbl_map(function(pos)
+                return pos.name
+              end, parents),
+              position.name,
+            })
+            :flatten()
+            :join("::")
+      end,
+    })
+  end
 
-  logger.debug("neotest-dotnet: Post-processed Position Tree: ")
-  logger.debug(modified_tree:to_list())
-
-  return modified_tree
+  return tree
 end
 
 ---@summary Neotest core interface method: Build specs for running tests
 ---@param args neotest.RunArgs
 ---@return nil | neotest.RunSpec | neotest.RunSpec[]
 DotnetNeotestAdapter.build_spec = function(args)
-  logger.debug("neotest-dotnet: Creating specs from Tree (as list): ")
-  logger.debug(args.tree:to_list())
+  local results_path = nio.fn.tempname()
 
-  local additional_args = args.dotnet_additional_args or dotnet_additional_args or nil
-
-  local specs = build_spec_utils.create_specs(args.tree, nil, additional_args)
-
-  logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
-  logger.debug(specs)
-
-  if args.strategy == "dap" then
-    if #specs > 1 then
-      logger.warn(
-        "neotest-dotnet: DAP strategy does not support multiple test projects. Please debug test projects or individual tests. Falling back to using default strategy."
-      )
-      args.strategy = "integrated"
-      return specs
-    else
-      specs[1].dap = dap
-      specs[1].strategy = require("neotest-dotnet.strategies.netcoredbg")
-    end
+  local tree = args.tree
+  if not tree then
+    return
   end
 
-  return specs
+  local pos = args.tree:data()
+
+  if pos.type ~= "test" then
+    return
+  end
+
+  return {
+    command = run_test_command(pos.id, results_path, pos.proj_dll_path),
+    context = {
+      result_path = results_path,
+      file = pos.path,
+      id = pos.id,
+    },
+  }
 end
 
 ---@async
 ---@param spec neotest.RunSpec
----@param _ neotest.StrategyResult
+---@param run neotest.StrategyResult
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
-DotnetNeotestAdapter.results = function(spec, _, tree)
-  local output_file = spec.context.results_path
+DotnetNeotestAdapter.results = function(spec, run, tree)
+  local success, data = pcall(lib.files.read, spec.context.result_path)
 
-  logger.debug("neotest-dotnet: Fetching results from neotest tree (as list): ")
-  logger.debug(tree:to_list())
+  local results = {}
 
-  local test_framework = FrameworkDiscovery.get_test_framework_utils_from_tree(tree)
-  local results = test_framework.generate_test_results(output_file, tree, spec.context.id)
+  if not success then
+    local outcome = "skipped"
+    results[spec.context.id] = {
+      status = outcome,
+      errors = {
+        message = "failed to read result file: " .. data,
+      },
+    }
 
-  return results
+    return results
+  end
+
+  local parse_ok, parsed = pcall(vim.json.decode, data)
+  assert(parse_ok, "failed to parse result file")
+
+  if not parse_ok then
+    local outcome = "skipped"
+    results[spec.context.id] = {
+      status = outcome,
+      errors = {
+        message = "failed to parse result file",
+      },
+    }
+
+    return results
+  end
+
+  return parsed
 end
 
 setmetatable(DotnetNeotestAdapter, {
