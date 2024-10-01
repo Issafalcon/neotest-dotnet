@@ -41,23 +41,23 @@ local function get_fsharp_queries(custom_test_attributes)
     (declaration_expression
       (attributes
         (attribute
-          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "^TestCase")))))
+          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "TestCase"))))+)
       (function_or_value_defn
         (function_declaration_left
-           (identifier) @test.name
+           (identifier) @test.parameterized.name
            (argument_patterns) @parameter_list))
-    ) @test.definition
+    ) @test.parameterized.definition
 
     ;; Matches test parameterized methods
     (member_defn
       (attributes
         (attribute
-          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "^TestCase")))))
+          (simple_type (long_identifier (identifier) @attribute_name (#any-of? @attribute_name "TestCase"))))+)
       (method_or_prop_defn
         (property_or_ident
-           (identifier) @test.name .)
+           (identifier) @test.parameterized.name .)
          args: (_) @parameter_list)
-    ) @test.definition
+    ) @test.parameterized.definition
   ]]
 end
 

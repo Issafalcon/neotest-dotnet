@@ -14,7 +14,7 @@ Neotest adapter for dotnet tests
 - Covers the "majority" of use cases for the 3 major .NET test runners
 - Attempts to provide support for `SpecFlow` generated tests for the various test runners
   - Support for this may still be patchy, so please raise an issue if it doesn't behave as expected
-  - `RunNearest` or `RunInFile` functions will need to be run from the *generated* specflow tests (NOT the `.feature`)
+  - `RunNearest` or `RunInFile` functions will need to be run from the _generated_ specflow tests (NOT the `.feature`)
 
 # Pre-requisites
 
@@ -23,7 +23,7 @@ neotest-dotnet requires makes a number of assumptions about your environment:
 1. The `dotnet sdk` that is compatible with the current project is installed and the `dotnet` executable is on the users runtime path (future updates may allow customisation of the dotnet exe location)
 2. The user is running tests using one of the supported test runners / frameworks (see support grid)
 3. (For Debugging) `netcoredbg` is installed and `nvim-dap` plugin has been configured for `netcoredbg` (see debug config for more details)
-4. Requires [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) and the parser for C#.
+4. Requires [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) and the parser for C# or F#.
 
 # Installation
 
@@ -93,7 +93,7 @@ require("neotest").setup({
 ## Additional `dotnet test` arguments
 
 As well as the `dotnet_additional_args` option in the adapter setup above, you may also provide additional CLI arguments as a table to each `neotest` command.
-By doing this, the additional args provided in the setup function will be *replaced* in their entirety by the ones provided at the command level.
+By doing this, the additional args provided in the setup function will be _replaced_ in their entirety by the ones provided at the command level.
 
 For example, to provide a `runtime` argument to the `dotnet test` command, for all the tests in the file, you can run:
 
@@ -150,7 +150,7 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 ### NUnit
 
 | Framework Feature            | Scope Level | Docs                                                                                                         | Status             | Notes                                                                                                                                                                                                                                                   |
-| -------------------------    | ----------- | ------------------------------------------------------------------------------------------------------       | ------------------ | -------------------------------------------------------------------------------------------------------------------                                                                                                                                     |
+| ---------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Test` (Attribute)           | Method      | [Test - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)                     | :heavy_check_mark: | Supported when used inside a class with or without the `TestFixture` attribute decoration                                                                                                                                                               |
 | `TestFixture` (Attribute)    | Class       | [TestFixture - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testfixture.html)       | :heavy_check_mark: |                                                                                                                                                                                                                                                         |
 | `TestCase()` (Attribute)     | Method      | [TestCase - Nunit](https://docs.nunit.org/articles/nunit/writing-tests/attributes/testcase.html)             | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality                                                                                                                                     |
@@ -170,13 +170,13 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 
 ### MSTest
 
-| Framework Feature            | Scope Level | Docs                                                                                                         | Status             | Notes                                                                                                                                                                                                                                                   |
-| -------------------------    | ----------- | ------------------------------------------------------------------------------------------------------       | ------------------ | -------------------------------------------------------------------------------------------------------------------                                                                                                                                     |
-| `TestMethod` (Attribute)           | Method      | [TestMethod - MSTest](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)                     | :heavy_check_mark: | |
-| `TestClass` (Attribute)    | Class       | [TestClass - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.testclassattribute?view=visualstudiosdk-2022)       | :heavy_check_mark: |                                                                                                                                                                                                                                                         |
-| Nested Classes               | Class       |                                                                                                              | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                                                                                                                                                                   |
-| `DataTestMethod` (Attribute)         | Method      | [DataTestMethod - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.datatestmethodattribute?view=visualstudiosdk-2022)                 | :heavy_check_mark:                | |
-| `DataRow` (Attribute) | Method      | [DataRow - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.datarowattribute?view=visualstudiosdk-2022) | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
+| Framework Feature            | Scope Level | Docs                                                                                                                                                                   | Status             | Notes                                                                                                               |
+| ---------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `TestMethod` (Attribute)     | Method      | [TestMethod - MSTest](https://docs.nunit.org/articles/nunit/writing-tests/attributes/test.html)                                                                        | :heavy_check_mark: |                                                                                                                     |
+| `TestClass` (Attribute)      | Class       | [TestClass - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.testclassattribute?view=visualstudiosdk-2022)           | :heavy_check_mark: |                                                                                                                     |
+| Nested Classes               | Class       |                                                                                                                                                                        | :heavy_check_mark: | Fully qualified name is corrected to include `+` when class is nested                                               |
+| `DataTestMethod` (Attribute) | Method      | [DataTestMethod - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.datatestmethodattribute?view=visualstudiosdk-2022) | :heavy_check_mark: |                                                                                                                     |
+| `DataRow` (Attribute)        | Method      | [DataRow - MSTest](https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.datarowattribute?view=visualstudiosdk-2022)               | :heavy_check_mark: | Support for parameterized tests with inline parameters. Supports neotest 'run nearest' and 'run file' functionality |
 
 # Limitations
 
@@ -185,10 +185,7 @@ To see if your use case is supported, check the grids below. If it isn't there, 
 2. Dynamically parameterized tests need to be grouped together as neotest-dotnet is unable to robustly match the full test names that the .NET test runner attaches to the tests at runtime.
    - An attempt was made to use `dotnet test -t` to extract the dynamic test names, but this was too unreliable (duplicate test names were indistinguishable, and xUnit was the only runner that provided fully qualified test names)
 3. See the support guidance for feature and language support
-
-- F# is currently unsupported due to the fact there is no complete tree-sitter parser for F# available as yet (<https://github.com/baronfel/tree-sitter-fsharp>)
-
-3. As mentioned in the **Debugging** section, there are some discrepancies in test output at the moment.
+4. As mentioned in the **Debugging** section, there are some discrepancies in test output at the moment.
 
 ## NUnit Limitations
 

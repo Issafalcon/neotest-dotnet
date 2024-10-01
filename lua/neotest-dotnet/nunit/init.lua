@@ -39,7 +39,7 @@ local build_parameterized_test_positions = function(
     (attribute_list
       (attribute
         name: (identifier) @attribute_name (#any-of? @attribute_name "TestCase")
-        ((attribute_argument_list) @arguments)
+        (attribute_argument_list) @arguments
       )
     )
   ]]
@@ -61,13 +61,14 @@ local build_parameterized_test_positions = function(
   local arguments_index = capture_indices["arguments"]
 
   for _, match in param_query:iter_matches(captured_nodes[match_type .. ".definition"], source) do
-    local args_node = match[arguments_index]
-    local args_text = vim.treesitter.get_node_text(args_node, source):gsub("[()]", "")
+    for _, args_node in ipairs(match[arguments_index]) do
+      local args_text = vim.treesitter.get_node_text(args_node, source):gsub("[()]", "")
 
-    nodes[#nodes + 1] = vim.tbl_extend("force", parameterized_test_node, {
-      name = parameterized_test_node.name .. "(" .. args_text .. ")",
-      range = { args_node:range() },
-    })
+      nodes[#nodes + 1] = vim.tbl_extend("force", parameterized_test_node, {
+        name = parameterized_test_node.name .. "(" .. args_text .. ")",
+        range = { args_node:range() },
+      })
+    end
   end
 
   logger.debug("neotest-dotnet(NUnit Utils): Built parameterized test positions: ")
@@ -292,9 +293,15 @@ M.generate_test_results = function(output_file_path, tree, context_id)
         result_test_name = string.gsub(result_test_name, "%(.*%)", "")
       end
 
+      -- remove spacing between parameters
+      local full_name = node_data.full_name:gsub(", ", ",")
+
+      -- string generic type parameters from test name
+      result_test_name = result_test_name:gsub("<.*>(", "")
+
       -- Use the full_name of the test, including namespace
       local is_match = #result_test_name == #node_data.full_name
-        or string.find(result_test_name, node_data.full_name, 0, true)
+        or string.find(result_test_name, full_name, 0, true)
 
       if is_match then
         -- For non-inlined parameterized tests, check if we already have an entry for the test.

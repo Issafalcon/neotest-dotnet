@@ -32,7 +32,6 @@ function M.get_test_nodes_data(tree)
     if
       node:data().framework == "xunit" --[[ or node:data().framework == "nunit" ]]
     then
-      -- local full_name = string.gsub(node:data().name, "``(.*)``", "%1")
       node:data().full_name = M.sanitize_fsharp_identifiers(node:data().name)
     else
       local full_name = M.get_qualified_test_name_from_id(node:data().id)

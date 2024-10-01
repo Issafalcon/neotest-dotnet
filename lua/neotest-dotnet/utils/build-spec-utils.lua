@@ -15,7 +15,8 @@ local BuildSpecUtils = {}
 function BuildSpecUtils.build_test_fqn(position_id)
   local fqn = neotest_node_tree_utils.get_qualified_test_name_from_id(position_id)
   -- Remove any test parameters as these don't work well with the dotnet filter formatting.
-  fqn = fqn:gsub("%b()", "")
+  -- Also replace spaces with "&" since some test runners can't parse the test name.
+  fqn = fqn:gsub("%b()", ""):gsub(" ", "&")
 
   return fqn
 end
