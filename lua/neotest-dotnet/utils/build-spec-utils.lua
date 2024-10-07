@@ -101,10 +101,9 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
       BuildSpecUtils.create_single_spec(position, proj_root, filter, dotnet_additional_args)
     table.insert(specs, spec)
   elseif position.type == "file" then
-    local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
-
-    local spec = BuildSpecUtils.create_single_spec(position, proj_root, "", dotnet_additional_args)
-    table.insert(specs, spec)
+    for _, child in ipairs(tree:children()) do
+      BuildSpecUtils.create_specs(child, specs, dotnet_additional_args)
+    end
   end
 
   return #specs < 0 and nil or specs

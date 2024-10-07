@@ -93,10 +93,11 @@ describe("create_specs", function()
       {
         command = "dotnet test "
           .. test_root_path
-          .. '  --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
+          .. ' --filter FullyQualifiedName~"xunit.testproj1"'
+          .. ' --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
         context = {
           file = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
-          id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
+          id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs::xunit.testproj1",
           results_path = test_result_path .. ".trx",
         },
       },
