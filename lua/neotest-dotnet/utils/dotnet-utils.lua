@@ -117,4 +117,16 @@ function DotNetUtils.get_test_full_names(project_path)
   }
 end
 
+function DotNetUtils.get_sdk_path()
+  local sdk_version =
+    vim.system({ "dotnet", "--version" }):wait().stdout:gsub("\r", ""):gsub("\n", "")
+
+  local platform = vim.loop.os_uname().sysname
+  local isWindows = platform == "Windows_NT"
+
+  local base = isWindows and "C:/Program Files/dotnet/sdk" or "/usr/lib/dotnet/sdk"
+  local sdk_path = vim.fs.joinpath(base, sdk_version)
+  return sdk_path
+end
+
 return DotNetUtils
