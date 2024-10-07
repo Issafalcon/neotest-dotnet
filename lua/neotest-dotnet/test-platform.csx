@@ -1,0 +1,5 @@
+#r "nuget: Microsoft.TestPlatform.TranslationLayer, 17.11.0"
+#r "nuget: Microsoft.VisualStudio.TestPlatform, 14.0.0"
+#r "nuget: MSTest.TestAdapter, 3.3.1"
+#r "nuget: MSTest.TestFramework, 3.3.1"
+#r "nuget: Newtonsoft.Json, 13.0.3"
