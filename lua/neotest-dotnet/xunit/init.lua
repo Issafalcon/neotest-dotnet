@@ -120,7 +120,7 @@ M.post_process_tree_list = function(tree, path)
 
         for _, dotnet_name in ipairs(dotnet_tests) do
           -- First remove parameters from test name so we just match the "base" test name
-          if string.find(dotnet_name:gsub("%b()", ""), node_test_name, 0, true) then
+          if string.find(dotnet_name:gsub("%b()", ""), node_test_name .. "$", 0, true) then
             table.insert(matched_tests, dotnet_name)
           end
         end
