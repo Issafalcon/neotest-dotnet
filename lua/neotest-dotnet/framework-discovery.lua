@@ -97,36 +97,49 @@ function M.get_test_framework_utils_from_source(source, custom_attribute_args)
   ]]
 
   async.scheduler()
-  local root = vim.treesitter.get_string_parser(source, "c_sharp"):parse()[1]:root()
-  local parsed_query = vim.fn.has("nvim-0.9.0") == 1
-      and vim.treesitter.query.parse("c_sharp", framework_query)
-    or vim.treesitter.parse_query("c_sharp", framework_query)
-  for _, captures in parsed_query:iter_matches(root, source) do
-    local test_attribute = vim.fn.has("nvim-0.9.0") == 1
-        and vim.treesitter.get_node_text(captures[1], source)
-      or vim.treesitter.query.get_node_text(captures[1], source)
-    if test_attribute then
-      if
-        string.find(xunit_attributes, test_attribute)
-        or string.find(test_attribute, "SkippableFactAttribute")
-      then
-        return xunit
-      elseif
-        string.find(nunit_attributes, test_attribute)
-        or string.find(test_attribute, "TestAttribute")
-      then
-        return nunit
-      elseif
-        string.find(mstest_attributes, test_attribute)
-        or string.find(test_attribute, "TestMethodAttribute")
-      then
-        return mstest
+  local parser = vim.treesitter.get_string_parser(source, "c_sharp")
+  local tree = parser:parse()[1]
+  local root = tree:root()
+  local nvim_version = vim.version()
+  local is_nvim_0_9 = nvim_version.major == 0 and nvim_version.minor >= 9
+
+  local parsed_query = nil
+  if is_nvim_0_9 then
+    parsed_query = vim.treesitter.query.parse("c_sharp", framework_query)
+  else
+    parsed_query = vim.treesitter.query.parse_query("c_sharp", framework_query)
+  end
+
+  -- Adjusted the iter_captures function call to include the source string
+  for id, node in parsed_query:iter_captures(root, source, 0, -1) do
+    local name = parsed_query.captures[id]
+    if node then
+      local test_attribute = nil
+      if is_nvim_0_9 then
+        -- Use the source string as the second argument
+        test_attribute = vim.treesitter.get_node_text(node, source)
       else
-        -- Default fallback
-        return xunit
+        -- Use the source string for Neovim versions below 0.9
+        test_attribute = vim.treesitter.query.get_node_text(node, source)
+      end
+
+      if test_attribute then
+        if string.find(xunit_attributes, test_attribute) or string.find(test_attribute, "SkippableFactAttribute") then
+          return xunit
+        elseif string.find(nunit_attributes, test_attribute) or string.find(test_attribute, "TestAttribute") then
+          return nunit
+        elseif string.find(mstest_attributes, test_attribute) or string.find(test_attribute, "TestMethodAttribute") then
+          return mstest
+        else
+          -- Default fallback
+          return xunit
+        end
       end
     end
   end
+
+  -- If no framework is detected, default to xunit
+  return xunit
 end
 
 function M.get_test_framework_utils_from_tree(tree)
