@@ -74,14 +74,19 @@ local fsharp_query = [[
 
 (declaration_expression
   (function_or_value_defn
-    (function_declaration_left . (_) @test.name)
-  ) @test.definition)
+    (function_declaration_left 
+      .
+      (_) @test.name)
+    body: (_) @test.definition))
 
 (member_defn
   (method_or_prop_defn
     (property_or_ident
        (identifier) @test.name .)
-  ) @test.definition) 
+    .
+    (_)
+    .
+    (_) @test.definition)) 
 ]]
 
 local cache = {}
@@ -148,8 +153,8 @@ DotnetNeotestAdapter.discover_positions = function(path)
     end)
     :totable()
 
-  logger.info("filtered test cases:")
-  logger.info(tests_in_file)
+  logger.debug("filtered test cases:")
+  logger.debug(tests_in_file)
 
   local tree
 
