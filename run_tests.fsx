@@ -14,19 +14,46 @@ open Microsoft.VisualStudio.TestPlatform.ObjectModel
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client
 
 module TestDiscovery =
+    [<return: Struct>]
+    let (|DiscoveryRequest|_|) (str: string) =
+        if str.StartsWith("discover") then
+            let args =
+                str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
+                |> Array.tail
 
-    let mutable discoveredTests = Seq.empty<TestCase>
+            {| OutputPath = Array.head args
+               Sources = args |> Array.tail |}
+            |> ValueOption.Some
+        else
+            ValueOption.None
+
+    [<return: Struct>]
+    let (|RunTests|_|) (str: string) =
+        if str.StartsWith("run-tests") then
+            let args =
+                str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
+                |> Array.tail
+
+            {| OutputPath = Array.head args
+               Ids = args |> Array.tail |> Array.map Guid.Parse |}
+            |> ValueOption.Some
+        else
+            ValueOption.None
+
+    let discoveredTests = Dictionary<Guid, TestCase>()
 
     type PlaygroundTestDiscoveryHandler() =
         interface ITestDiscoveryEventsHandler2 with
             member _.HandleDiscoveredTests(discoveredTestCases: IEnumerable<TestCase>) =
-                discoveredTests <- discoveredTestCases
+                for testCase in discoveredTestCases do
+                    discoveredTests.Add(testCase.Id, testCase) |> ignore
 
             member _.HandleDiscoveryComplete(_, _) = ()
+
             member _.HandleLogMessage(_, _) = ()
             member _.HandleRawMessage(_) = ()
 
-    type PlaygroundTestRunHandler(outputFilePath) =
+    type PlaygroundTestRunHandler(streamOutputPath, outputFilePath) =
         interface ITestRunEventsHandler with
             member _.HandleTestRunComplete
                 (_testRunCompleteArgs, _lastChunkArgs, _runContextAttachments, _executorUris)
@@ -38,8 +65,6 @@ module TestDiscovery =
             member __.HandleRawMessage(_rawMessage) = ()
 
             member __.HandleTestRunStatsChange(testRunChangedArgs: TestRunChangedEventArgs) : unit =
-                use writer = new StreamWriter(outputFilePath, append = false)
-
                 let toNeoTestStatus (outcome: TestOutcome) =
                     match outcome with
                     | TestOutcome.Passed -> "passed"
@@ -49,51 +74,54 @@ module TestDiscovery =
                     | TestOutcome.NotFound -> "skipped"
                     | _ -> "skipped"
 
-                testRunChangedArgs.NewTestResults
-                |> Seq.map (fun result ->
-                    let outcome = toNeoTestStatus result.Outcome
+                let results =
+                    testRunChangedArgs.NewTestResults
+                    |> Seq.map (fun result ->
+                        let outcome = toNeoTestStatus result.Outcome
 
-                    let errorMessage =
-                        let message = result.ErrorMessage |> Option.ofObj |> Option.defaultValue ""
-                        let stackTrace = result.ErrorStackTrace |> Option.ofObj |> Option.defaultValue ""
+                        let errorMessage =
+                            let message = result.ErrorMessage |> Option.ofObj
+                            let stackTrace = result.ErrorStackTrace |> Option.ofObj
 
-                        [ message; stackTrace ]
-                        |> List.filter (not << String.IsNullOrWhiteSpace)
-                        |> String.concat Environment.NewLine
+                            match message, stackTrace with
+                            | Some message, Some stackTrace -> Some $"{message}{Environment.NewLine}{stackTrace}"
+                            | Some message, None -> Some message
+                            | None, Some stackTrace -> Some stackTrace
+                            | None, None -> None
 
-                    result.TestCase.Id,
-                    {| status = outcome
-                       short = $"{result.TestCase.DisplayName}:{outcome}"
-                       errors = [| {| message = errorMessage |} |] |})
-                |> Map.ofSeq
-                |> JsonConvert.SerializeObject
-                |> writer.WriteLine
+                        let errors =
+                            match errorMessage with
+                            | Some error -> [| {| message = error |} |]
+                            | None -> [||]
+
+                        result.TestCase.Id,
+                        {| status = outcome
+                           short = $"{result.TestCase.DisplayName}:{outcome}"
+                           errors = errors |})
+
+                use streamWriter = new StreamWriter(streamOutputPath, append = true)
+
+                for (id, result) in results do
+                    {| id = id; result = result |}
+                    |> JsonConvert.SerializeObject
+                    |> streamWriter.WriteLine
+
+                use outputWriter = new StreamWriter(outputFilePath, append = false)
+                outputWriter.WriteLine(JsonConvert.SerializeObject(Map.ofSeq results))
 
             member __.LaunchProcessWithDebuggerAttached(_testProcessStartInfo) = 1
 
     let main (argv: string[]) =
-        if argv.Length <> 4 then
-            invalidArg
-                "CommandLineArgs"
-                "Usage: fsi script.fsx <vstest-console-path> <output-path> <list-of-test-ids> <test-dll-path>"
+        if argv.Length <> 1 then
+            invalidArg "CommandLineArgs" "Usage: fsi script.fsx <vstest-console-path>"
 
         let console = argv[0]
-
-        let outputPath = argv[1]
 
         let sourceSettings =
             """
         <RunSettings>
         </RunSettings>
         """
-
-        let testIds =
-            argv[2]
-                .Split(";", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
-            |> Array.map Guid.Parse
-            |> Set
-
-        let sources = argv[3..]
 
         let environmentVariables =
             Map.empty
@@ -109,18 +137,38 @@ module TestDiscovery =
         let r =
             VsTestConsoleWrapper(console, ConsoleParameters(EnvironmentVariables = environmentVariables))
 
-        let discoveryHandler = PlaygroundTestDiscoveryHandler()
-        let testHandler = PlaygroundTestRunHandler(outputPath)
-
         let testSession = TestSessionInfo()
+        let discoveryHandler = PlaygroundTestDiscoveryHandler()
 
-        r.DiscoverTests(sources, sourceSettings, options, testSession, discoveryHandler)
+        r.StartSession()
 
-        let testsToRun =
-            discoveredTests |> Seq.filter (fun testCase -> Set.contains testCase.Id testIds)
+        let mutable loop = true
 
-        r.RunTests(testsToRun, sourceSettings, options, testHandler)
+        while loop do
+            match Console.ReadLine() with
+            | DiscoveryRequest args ->
+                r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
+
+                use streamWriter = new StreamWriter(args.OutputPath, append = false)
+                discoveredTests |> JsonConvert.SerializeObject |> streamWriter.WriteLine
+
+                Console.WriteLine($"Wrote test results to {args.OutputPath}")
+            | RunTests args ->
+                let testCases =
+                    args.Ids
+                    |> Array.choose (fun id ->
+                        match discoveredTests.TryGetValue(id) with
+                        | true, testCase -> Some testCase
+                        | false, _ -> None)
+
+                let testHandler = PlaygroundTestRunHandler(args.OutputPath, args.OutputPath)
+                r.RunTests(testCases, sourceSettings, testHandler)
+            | _ -> loop <- false
+
+        r.EndSession()
 
         0
 
-    main <| Array.tail fsi.CommandLineArgs
+    let args = fsi.CommandLineArgs |> Array.tail
+
+    main args

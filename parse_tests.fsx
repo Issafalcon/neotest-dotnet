@@ -68,7 +68,11 @@ module TestDiscovery =
 
         let testSession = TestSessionInfo()
 
+        r.StartSession()
+
         r.DiscoverTests(sources, sourceSettings, options, testSession, discoveryHandler)
+
+        r.EndSession()
         0
 
     main <| Array.tail fsi.CommandLineArgs

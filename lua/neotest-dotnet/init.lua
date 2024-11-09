@@ -2,6 +2,8 @@ local nio = require("nio")
 local lib = require("neotest.lib")
 local logger = require("neotest.logging")
 
+local vstest = require("neotest-dotnet.vstest_wrapper")
+
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 local dap = { adapter_name = "netcoredbg" }
 
@@ -21,15 +23,19 @@ local function test_discovery_args(test_application_dll)
   return { "fsi", test_discovery_script, testhost_dll, test_application_dll }
 end
 
-local function run_test_command(id, output_path, test_application_dll)
+local function run_test_command(id, stream_path, output_path, test_application_dll)
   local test_discovery_script = get_script("run_tests.fsx")
   local testhost_dll = "/usr/local/share/dotnet/sdk/8.0.401/vstest.console.dll"
 
   return {
     "dotnet",
     "fsi",
+    "--exec",
+    "--nologo",
+    "--shadowcopyreferences+",
     test_discovery_script,
     testhost_dll,
+    stream_path,
     output_path,
     id,
     test_application_dll,
@@ -80,21 +86,21 @@ local fsharp_query = [[
 
 local cache = {}
 
-local function discover_tests(proj_dll_path)
-  local open_err, file_fd = nio.uv.fs_open(proj_dll_path, "r", 444)
-  assert(not open_err, open_err)
-  local stat_err, stat = nio.uv.fs_fstat(file_fd)
-  assert(not stat_err, stat_err)
-  nio.uv.fs_close(file_fd)
-  cache[proj_dll_path] = cache[proj_dll_path] or {}
-  if cache.last_cached == nil or cache.last_cached < stat.mtime.sec then
-    local discovery = nio.process.run({ cmd = "dotnet", args = test_discovery_args(proj_dll_path) })
-    cache[proj_dll_path].data = vim.json.decode(discovery.stdout.read())
-    cache[proj_dll_path].last_cached = stat.mtime.sec
-    discovery.close()
-  end
-  return cache[proj_dll_path].data
-end
+-- local function discover_tests(proj_dll_path)
+--   local open_err, file_fd = nio.uv.fs_open(proj_dll_path, "r", 444)
+--   assert(not open_err, open_err)
+--   local stat_err, stat = nio.uv.fs_fstat(file_fd)
+--   assert(not stat_err, stat_err)
+--   nio.uv.fs_close(file_fd)
+--   cache[proj_dll_path] = cache[proj_dll_path] or {}
+--   if cache.last_cached == nil or cache.last_cached < stat.mtime.sec then
+--     local discovery = vstest.discover_tests
+--     cache[proj_dll_path].data = vim.json.decode(discovery.stdout.read())
+--     cache[proj_dll_path].last_cached = stat.mtime.sec
+--     discovery.close()
+--   end
+--   return cache[proj_dll_path].data
+-- end
 
 local function get_match_type(captured_nodes)
   if captured_nodes["test.name"] then
@@ -116,14 +122,14 @@ local function get_proj_file(path)
     return name:match("%.[cf]sproj$")
   end, { type = "file", path = vim.fs.dirname(path) })[1]
 
-  local dir_name = vim.fs.dirname(proj_file)
-  local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
-
-  local proj_dll_path =
-    vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
-
-  proj_file_path_map[path] = proj_dll_path
-  return proj_dll_path
+  -- local dir_name = vim.fs.dirname(proj_file)
+  -- local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
+  --
+  -- local proj_dll_path =
+  --   vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
+  --
+  proj_file_path_map[path] = proj_file
+  return proj_file
 end
 
 ---@param path any The path to the file to discover positions in
@@ -133,13 +139,19 @@ DotnetNeotestAdapter.discover_positions = function(path)
   local proj_dll_path = get_proj_file(path)
 
   local tests_in_file = vim
-    .iter(discover_tests(proj_dll_path))
+    .iter(vstest.discover_tests(proj_dll_path))
+    :map(function(_, v)
+      return v
+    end)
     :filter(function(test)
-      return test.FilePath == path
+      return test.CodeFilePath == path
     end)
     :totable()
 
-  local tree = {}
+  logger.info("filtered test cases:")
+  logger.info(tests_in_file)
+
+  local tree
 
   ---@return nil | neotest.Position | neotest.Position[]
   local function build_position(source, captured_nodes)
@@ -156,9 +168,9 @@ DotnetNeotestAdapter.discover_positions = function(path)
               id = test.Id,
               type = match_type,
               path = path,
-              name = test.Name,
-              qualified_name = test.Namespace,
-              proj_dll_path = proj_dll_path,
+              name = test.DisplayName,
+              qualified_name = test.FullyQualifiedName,
+              proj_dll_path = test.Source,
               range = { definition:range() },
             })
           end
@@ -238,6 +250,10 @@ end
 ---@return nil | neotest.RunSpec | neotest.RunSpec[]
 DotnetNeotestAdapter.build_spec = function(args)
   local results_path = nio.fn.tempname()
+  local stream_path = nio.fn.tempname()
+  lib.files.write(stream_path, "")
+
+  local stream_data, stop_stream = lib.files.stream_lines(stream_path)
 
   local tree = args.tree
   if not tree then
@@ -251,12 +267,24 @@ DotnetNeotestAdapter.build_spec = function(args)
   end
 
   return {
-    command = run_test_command(pos.id, results_path, pos.proj_dll_path),
+    command = run_test_command(pos.id, stream_path, results_path, pos.proj_dll_path),
     context = {
       result_path = results_path,
+      stop_stream = stop_stream,
       file = pos.path,
       id = pos.id,
     },
+    stream = function()
+      return function()
+        local lines = stream_data()
+        local results = {}
+        for _, line in ipairs(lines) do
+          local result = vim.json.decode(line, { luanil = { object = true } })
+          results[result.id] = result.result
+        end
+        return results
+      end
+    end,
   }
 end
 
@@ -266,6 +294,7 @@ end
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, run, tree)
+  spec.context.stop_stream()
   local success, data = pcall(lib.files.read, spec.context.result_path)
 
   local results = {}
