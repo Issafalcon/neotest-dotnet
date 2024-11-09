@@ -267,7 +267,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   end
 
   return {
-    command = run_test_command(pos.id, stream_path, results_path, pos.proj_dll_path),
+    command = { "dotnet", "build" },
     context = {
       result_path = results_path,
       stop_stream = stop_stream,
@@ -275,6 +275,7 @@ DotnetNeotestAdapter.build_spec = function(args)
       id = pos.id,
     },
     stream = function()
+      vstest.run_tests(pos.id, stream_path, results_path)
       return function()
         local lines = stream_data()
         local results = {}
@@ -294,8 +295,10 @@ end
 ---@param tree neotest.Tree
 ---@return neotest.Result[]
 DotnetNeotestAdapter.results = function(spec, run, tree)
+  local max_wait = 5 * 60 * 1000 -- 5 min
+  local success, data = pcall(vstest.spin_lock_wait_file, spec.context.result_path, max_wait)
+
   spec.context.stop_stream()
-  local success, data = pcall(lib.files.read, spec.context.result_path)
 
   local results = {}
 

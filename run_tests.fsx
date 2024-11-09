@@ -34,19 +34,24 @@ module TestDiscovery =
                 str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
                 |> Array.tail
 
-            {| OutputPath = Array.head args
-               Ids = args |> Array.tail |> Array.map Guid.Parse |}
+            {| StreamPath = args[0]
+               OutputPath = args[1]
+               Ids = args[2..] |> Array.map Guid.Parse |}
             |> ValueOption.Some
         else
             ValueOption.None
 
-    let discoveredTests = Dictionary<Guid, TestCase>()
+    let discoveredTests = Dictionary<string, TestCase seq>()
 
     type PlaygroundTestDiscoveryHandler() =
         interface ITestDiscoveryEventsHandler2 with
             member _.HandleDiscoveredTests(discoveredTestCases: IEnumerable<TestCase>) =
-                for testCase in discoveredTestCases do
-                    discoveredTests.Add(testCase.Id, testCase) |> ignore
+                discoveredTestCases
+                |> Seq.groupBy _.CodeFilePath
+                |> Seq.iter (fun (file, testCase) -> 
+                  if discoveredTests.ContainsKey file then
+                    discoveredTests.Remove(file) |> ignore
+                  discoveredTests.Add(file, testCase))
 
             member _.HandleDiscoveryComplete(_, _) = ()
 
@@ -150,18 +155,26 @@ module TestDiscovery =
                 r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
 
                 use streamWriter = new StreamWriter(args.OutputPath, append = false)
-                discoveredTests |> JsonConvert.SerializeObject |> streamWriter.WriteLine
+                discoveredTests
+                |> _.Values
+                |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
+                |> Map
+                |> JsonConvert.SerializeObject 
+                |> streamWriter.WriteLine
 
                 Console.WriteLine($"Wrote test results to {args.OutputPath}")
             | RunTests args ->
-                let testCases =
-                    args.Ids
-                    |> Array.choose (fun id ->
-                        match discoveredTests.TryGetValue(id) with
-                        | true, testCase -> Some testCase
-                        | false, _ -> None)
+                let idMap =
+                  discoveredTests
+                  |> _.Values
+                  |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
+                  |> Map
 
-                let testHandler = PlaygroundTestRunHandler(args.OutputPath, args.OutputPath)
+                let testCases =
+                  args.Ids
+                  |> Array.choose (fun id -> Map.tryFind id idMap)
+
+                let testHandler = PlaygroundTestRunHandler(args.StreamPath, args.OutputPath)
                 r.RunTests(testCases, sourceSettings, testHandler)
             | _ -> loop <- false
 

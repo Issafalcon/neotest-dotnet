@@ -49,7 +49,32 @@ local function invoke_test_runner(command)
   return test_runner(command)
 end
 
-local discovery_semaphore = nio.control.semaphore(1)
+local spin_lock = nio.control.semaphore(1)
+
+function M.spin_lock_wait_file(file_path, max_wait)
+  local json = {}
+
+  local sleep_time = 25 -- scan every 25 ms
+  local tries = 1
+  local file_exists = false
+
+  while not file_exists and tries * sleep_time < max_wait do
+    if vim.fn.filereadable(file_path) == 1 then
+      spin_lock.with(function()
+        local file, open_err = nio.file.open(file_path)
+        assert(not open_err, open_err)
+        file_exists = true
+        json = file.read()
+        file.close()
+      end)
+    else
+      tries = tries + 1
+      nio.sleep(sleep_time)
+    end
+  end
+
+  return json
+end
 
 function M.discover_tests(proj_file)
   local output_file = nio.fn.tempname()
@@ -79,38 +104,20 @@ function M.discover_tests(proj_file)
   logger.debug("Waiting for result file to populate...")
 
   local max_wait = 10 * 1000 -- 10 sec
-  local sleep_time = 25 -- scan every 25 ms
-  local tries = 1
-  local file_exists = false
 
-  local json = {}
-
-  while not file_exists and tries * sleep_time < max_wait do
-    if vim.fn.filereadable(output_file) == 1 then
-      discovery_semaphore.with(function()
-        local file, open_err = nio.file.open(output_file)
-        assert(not open_err, open_err)
-        file_exists = true
-        json = vim.json.decode(file.read(), { luanil = { object = true } })
-        file.close()
-      end)
-    else
-      tries = tries + 1
-      nio.sleep(sleep_time)
-    end
-  end
+  local json =
+    vim.json.decode(M.spin_lock_wait_file(output_file, max_wait), { luanil = { object = true } })
 
   logger.debug("file has been populated. Extracting test cases")
 
   return json
 end
 
-function M.run_tests(ids, output_path)
-  lib.process.run({ "dotnet", "build" })
-
+function M.run_tests(ids, stream_path, output_path)
   local command = vim
     .iter({
       "run-tests",
+      stream_path,
       output_path,
       ids,
     })
