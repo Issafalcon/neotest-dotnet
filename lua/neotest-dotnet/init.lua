@@ -20,32 +20,63 @@ DotnetNeotestAdapter.filter_dir = function(name)
 end
 
 local fsharp_query = [[
-(namespace
-    name: (long_identifier) @namespace.name
-) @namespace.definition
+    (namespace
+        name: (long_identifier) @namespace.name
+    ) @namespace.definition
 
-(anon_type_defn
-   (type_name (identifier) @namespace.name)
-) @namespace.definition
+    (anon_type_defn
+       (type_name (identifier) @namespace.name)
+    ) @namespace.definition
 
-(named_module
-    name: (long_identifier) @namespace.name
-) @namespace.definition
+    (named_module
+        name: (long_identifier) @namespace.name
+    ) @namespace.definition
 
-(module_defn
-    (identifier) @namespace.name
-) @namespace.definition
+    (module_defn
+        (identifier) @namespace.name
+    ) @namespace.definition
 
-(declaration_expression
-  (function_or_value_defn
-    (function_declaration_left . (_) @test.name))
-) @test.definition
+    (declaration_expression
+      (function_or_value_defn
+        (function_declaration_left . (_) @test.name))
+    ) @test.definition
 
-(member_defn
-  (method_or_prop_defn
-    (property_or_ident
-       (identifier) @test.name .))
-) @test.definition
+    (member_defn
+      (method_or_prop_defn
+        (property_or_ident
+           (identifier) @test.name .))
+    ) @test.definition
+]]
+
+local c_sharp_query = [[
+    ;; Matches namespace with a '.' in the name
+    (namespace_declaration
+        name: (qualified_name) @namespace.name
+    ) @namespace.definition
+
+    ;; Matches namespace with a single identifier (no '.')
+    (namespace_declaration
+        name: (identifier) @namespace.name
+    ) @namespace.definition
+
+    ;; Matches file-scoped namespaces (qualified and unqualified respectively)
+    (file_scoped_namespace_declaration
+        name: (qualified_name) @namespace.name
+    ) @namespace.definition
+
+    (file_scoped_namespace_declaration
+        name: (identifier) @namespace.name
+    ) @namespace.definition
+
+    ;; Matches XUnit test class (has no specific attributes on class)
+    (class_declaration
+      name: (identifier) @namespace.name
+    ) @namespace.definition
+
+    ;; Matches test methods
+    (method_declaration
+      name: (identifier) @test.name
+    ) @test.definition
 ]]
 
 local function get_match_type(captured_nodes)
@@ -140,7 +171,8 @@ DotnetNeotestAdapter.discover_positions = function(path)
 
     local root = lib.treesitter.fast_parse(lang_tree):root()
 
-    local query = lib.treesitter.normalise_query(lang, fsharp_query)
+    local query =
+      lib.treesitter.normalise_query(lang, filetype == "fsharp" and fsharp_query or c_sharp_query)
 
     local sep = lib.files.sep
     local path_elems = vim.split(path, sep, { plain = true })
