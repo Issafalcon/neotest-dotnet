@@ -32,7 +32,7 @@ local function invoke_test_runner(command)
         logger.trace(err)
       end,
     }, function(obj)
-      logger.warn("process ded :(")
+      logger.warn("vstest process died :(")
       logger.warn(obj.code)
       logger.warn(obj.signal)
       logger.warn(obj.stdout)
@@ -114,6 +114,8 @@ function M.discover_tests(proj_file)
 end
 
 function M.run_tests(ids, stream_path, output_path)
+  lib.process.run({ "dotnet", "build" })
+
   local command = vim
     .iter({
       "run-tests",
@@ -124,6 +126,8 @@ function M.run_tests(ids, stream_path, output_path)
     :flatten()
     :join(" ")
   invoke_test_runner(command)
+
+  return string.format("tail -n 1 -f %s", output_path, output_path)
 end
 
 return M
