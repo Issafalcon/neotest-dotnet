@@ -38,19 +38,14 @@ local fsharp_query = [[
 
 (declaration_expression
   (function_or_value_defn
-    (function_declaration_left 
-      .
-      (_) @test.name)
-    body: (_) @test.definition))
+    (function_declaration_left . (_) @test.name))
+) @test.definition
 
 (member_defn
   (method_or_prop_defn
     (property_or_ident
-       (identifier) @test.name .)
-    .
-    (_)
-    .
-    (_) @test.definition)) 
+       (identifier) @test.name .))
+) @test.definition
 ]]
 
 local function get_match_type(captured_nodes)
@@ -108,8 +103,9 @@ DotnetNeotestAdapter.discover_positions = function(path)
 
       if match_type == "test" then
         for _, test in ipairs(tests_in_file) do
-          -- TODO: check if linenumber in start<->end range.
-          if test.LineNumber == definition:start() + 1 then
+          if
+            definition:start() <= test.LineNumber - 1 and test.LineNumber - 1 <= definition:end_()
+          then
             table.insert(positions, {
               id = test.Id,
               type = match_type,
