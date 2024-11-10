@@ -5,42 +5,6 @@ local logger = require("neotest.logging")
 local vstest = require("neotest-dotnet.vstest_wrapper")
 
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
-local dap = { adapter_name = "netcoredbg" }
-
-local function get_script(script_name)
-  local script_paths = vim.api.nvim_get_runtime_file(script_name, true)
-  for _, path in ipairs(script_paths) do
-    if vim.endswith(path, ("neotest-dotnet%s" .. script_name):format(lib.files.sep)) then
-      return path
-    end
-  end
-end
-
-local function test_discovery_args(test_application_dll)
-  local test_discovery_script = get_script("parse_tests.fsx")
-  local testhost_dll = "/usr/local/share/dotnet/sdk/8.0.401/vstest.console.dll"
-
-  return { "fsi", test_discovery_script, testhost_dll, test_application_dll }
-end
-
-local function run_test_command(id, stream_path, output_path, test_application_dll)
-  local test_discovery_script = get_script("run_tests.fsx")
-  local testhost_dll = "/usr/local/share/dotnet/sdk/8.0.401/vstest.console.dll"
-
-  return {
-    "dotnet",
-    "fsi",
-    "--exec",
-    "--nologo",
-    "--shadowcopyreferences+",
-    test_discovery_script,
-    testhost_dll,
-    stream_path,
-    output_path,
-    id,
-    test_application_dll,
-  }
-end
 
 DotnetNeotestAdapter.root = function(path)
   return lib.files.match_root_pattern("*.sln")(path)
@@ -89,24 +53,6 @@ local fsharp_query = [[
     (_) @test.definition)) 
 ]]
 
-local cache = {}
-
--- local function discover_tests(proj_dll_path)
---   local open_err, file_fd = nio.uv.fs_open(proj_dll_path, "r", 444)
---   assert(not open_err, open_err)
---   local stat_err, stat = nio.uv.fs_fstat(file_fd)
---   assert(not stat_err, stat_err)
---   nio.uv.fs_close(file_fd)
---   cache[proj_dll_path] = cache[proj_dll_path] or {}
---   if cache.last_cached == nil or cache.last_cached < stat.mtime.sec then
---     local discovery = vstest.discover_tests
---     cache[proj_dll_path].data = vim.json.decode(discovery.stdout.read())
---     cache[proj_dll_path].last_cached = stat.mtime.sec
---     discovery.close()
---   end
---   return cache[proj_dll_path].data
--- end
-
 local function get_match_type(captured_nodes)
   if captured_nodes["test.name"] then
     return "test"
@@ -127,12 +73,6 @@ local function get_proj_file(path)
     return name:match("%.[cf]sproj$")
   end, { type = "file", path = vim.fs.dirname(path) })[1]
 
-  -- local dir_name = vim.fs.dirname(proj_file)
-  -- local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
-  --
-  -- local proj_dll_path =
-  --   vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
-  --
   proj_file_path_map[path] = proj_file
   return proj_file
 end
@@ -168,6 +108,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
 
       if match_type == "test" then
         for _, test in ipairs(tests_in_file) do
+          -- TODO: check if linenumber in start<->end range.
           if test.LineNumber == definition:start() + 1 then
             table.insert(positions, {
               id = test.Id,
@@ -254,13 +195,6 @@ end
 ---@param args neotest.RunArgs
 ---@return nil | neotest.RunSpec | neotest.RunSpec[]
 DotnetNeotestAdapter.build_spec = function(args)
-  local results_path = nio.fn.tempname()
-  local stream_path = nio.fn.tempname()
-  lib.files.write(results_path, "")
-  lib.files.write(stream_path, "")
-
-  local stream_data, stop_stream = lib.files.stream_lines(stream_path)
-
   local tree = args.tree
   if not tree then
     return
@@ -270,6 +204,40 @@ DotnetNeotestAdapter.build_spec = function(args)
 
   if pos.type ~= "test" then
     return
+  end
+
+  local results_path = nio.fn.tempname()
+  local stream_path = nio.fn.tempname()
+  lib.files.write(results_path, "")
+  lib.files.write(stream_path, "")
+
+  local stream_data, stop_stream = lib.files.stream_lines(stream_path)
+
+  local strategy
+  if args.strategy == "dap" then
+    local pid_path = nio.fn.tempname()
+    local attached_path = nio.fn.tempname()
+
+    local pid = vstest.debug_tests(pid_path, attached_path, stream_path, results_path, pos.id)
+    --- @type Configuration
+    strategy = {
+      type = "netcoredbg",
+      name = "netcoredbg - attach",
+      request = "attach",
+      cwd = vim.fs.dirname(get_proj_file(pos.path)),
+      env = {
+        DOTNET_ENVIRONMENT = "Development",
+      },
+      processId = pid,
+      before = function()
+        local dap = require("dap")
+        dap.listeners.after.configurationDone["neotest-dotnet"] = function()
+          nio.run(function()
+            lib.files.write(attached_path, "1")
+          end)
+        end
+      end,
+    }
   end
 
   return {
@@ -291,6 +259,7 @@ DotnetNeotestAdapter.build_spec = function(args)
         return results
       end
     end,
+    strategy = strategy,
   }
 end
 
@@ -338,64 +307,7 @@ DotnetNeotestAdapter.results = function(spec, run, tree)
 end
 
 setmetatable(DotnetNeotestAdapter, {
-  __call = function(_, opts)
-    if type(opts.dap) == "table" then
-      for k, v in pairs(opts.dap) do
-        dap[k] = v
-      end
-    end
-    if type(opts.custom_attributes) == "table" then
-      custom_attribute_args = opts.custom_attributes
-    end
-    if type(opts.dotnet_additional_args) == "table" then
-      dotnet_additional_args = opts.dotnet_additional_args
-    end
-    if type(opts.discovery_root) == "string" then
-      discovery_root = opts.discovery_root
-    end
-
-    local function find_runsettings_files()
-      local files = {}
-      for _, runsettingsFile in
-        ipairs(vim.fn.glob(vim.fn.getcwd() .. "**/*.runsettings", false, true))
-      do
-        table.insert(files, runsettingsFile)
-      end
-
-      for _, runsettingsFile in
-        ipairs(vim.fn.glob(vim.fn.getcwd() .. "**/.runsettings", false, true))
-      do
-        table.insert(files, runsettingsFile)
-      end
-
-      return files
-    end
-
-    local function select_runsettings_file()
-      local files = find_runsettings_files()
-      if #files == 0 then
-        print("No .runsettings files found")
-        vim.g.neotest_dotnet_runsettings_path = nil
-        return
-      end
-
-      vim.ui.select(files, {
-        prompt = "Select runsettings file:",
-        format_item = function(item)
-          return vim.fn.fnamemodify(item, ":p:.")
-        end,
-      }, function(choice)
-        if choice then
-          vim.g.neotest_dotnet_runsettings_path = choice
-          print("Selected runsettings file: " .. choice)
-        end
-      end)
-    end
-
-    vim.api.nvim_create_user_command("NeotestSelectRunsettingsFile", select_runsettings_file, {})
-    vim.api.nvim_create_user_command("NeotestClearRunsettings", function()
-      vim.g.neotest_dotnet_runsettings_path = nil
-    end, {})
+  __call = function(_, _)
     return DotnetNeotestAdapter
   end,
 })

@@ -51,6 +51,10 @@ end
 
 local spin_lock = nio.control.semaphore(1)
 
+---Repeatly tries to read content. Repeats untill the file is non-empty or operation times out.
+---@param file_path string
+---@param max_wait integer maximal time to wait for the file to populated in miliseconds.
+---@return table|string
 function M.spin_lock_wait_file(file_path, max_wait)
   local json = {}
 
@@ -76,6 +80,8 @@ function M.spin_lock_wait_file(file_path, max_wait)
   return json
 end
 
+---@param proj_file string
+---@return table test_cases
 function M.discover_tests(proj_file)
   local output_file = nio.fn.tempname()
 
@@ -113,6 +119,11 @@ function M.discover_tests(proj_file)
   return json
 end
 
+---runs tests identified by ids.
+---@param ids string|string[]
+---@param stream_path string
+---@param output_path string
+---@return string command
 function M.run_tests(ids, stream_path, output_path)
   lib.process.run({ "dotnet", "build" })
 
@@ -128,6 +139,39 @@ function M.run_tests(ids, stream_path, output_path)
   invoke_test_runner(command)
 
   return string.format("tail -n 1 -f %s", output_path, output_path)
+end
+
+---Uses the vstest console to spawn a test process for the debugger to attach to.
+---@param pid_path string
+---@param attached_path string
+---@param stream_path string
+---@param output_path string
+---@param ids string|string[]
+---@return integer pid
+function M.debug_tests(pid_path, attached_path, stream_path, output_path, ids)
+  lib.process.run({ "dotnet", "build" })
+
+  local command = vim
+    .iter({
+      "debug-tests",
+      pid_path,
+      attached_path,
+      stream_path,
+      output_path,
+      ids,
+    })
+    :flatten()
+    :join(" ")
+  logger.debug("starting test in debug mode using:")
+  logger.debug(command)
+
+  invoke_test_runner(command)
+
+  logger.debug("Waiting for pid file to populate...")
+
+  local max_wait = 30 * 1000 -- 30 sec
+
+  return M.spin_lock_wait_file(pid_path, max_wait)
 end
 
 return M

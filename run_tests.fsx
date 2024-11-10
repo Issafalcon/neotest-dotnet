@@ -7,13 +7,18 @@
 
 open System
 open System.IO
+open System.Threading
+open System.Threading.Tasks
 open Newtonsoft.Json
 open System.Collections.Generic
 open Microsoft.TestPlatform.VsTestConsole.TranslationLayer
 open Microsoft.VisualStudio.TestPlatform.ObjectModel
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client
+open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
 
 module TestDiscovery =
+    open System.Threading
+
     [<return: Struct>]
     let (|DiscoveryRequest|_|) (str: string) =
         if str.StartsWith("discover") then
@@ -41,6 +46,24 @@ module TestDiscovery =
         else
             ValueOption.None
 
+    [<return: Struct>]
+    let (|DebugTests|_|) (str: string) =
+        if str.StartsWith("debug-tests") then
+            let args =
+                str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
+                |> Array.tail
+
+            {| PidPath = args[0]
+               AttachedPath = args[1]
+               StreamPath = args[2]
+               OutputPath = args[3]
+               Ids = args[4..] |> Array.map Guid.Parse |}
+            |> ValueOption.Some
+        else
+            ValueOption.None
+
+    let discoveryCompleteEvent = new ManualResetEventSlim()
+
     let discoveredTests = Dictionary<string, TestCase seq>()
 
     type PlaygroundTestDiscoveryHandler() =
@@ -48,10 +71,13 @@ module TestDiscovery =
             member _.HandleDiscoveredTests(discoveredTestCases: IEnumerable<TestCase>) =
                 discoveredTestCases
                 |> Seq.groupBy _.CodeFilePath
-                |> Seq.iter (fun (file, testCase) -> 
-                  if discoveredTests.ContainsKey file then
-                    discoveredTests.Remove(file) |> ignore
-                  discoveredTests.Add(file, testCase))
+                |> Seq.iter (fun (file, testCases) ->
+                    if discoveredTests.ContainsKey file then
+                        discoveredTests.Remove(file) |> ignore
+
+                    discoveredTests.Add(file, testCases))
+
+                discoveryCompleteEvent.Set()
 
             member _.HandleDiscoveryComplete(_, _) = ()
 
@@ -116,6 +142,35 @@ module TestDiscovery =
 
             member __.LaunchProcessWithDebuggerAttached(_testProcessStartInfo) = 1
 
+    type DebugLauncher(pidFile: string, attachedFile: string) =
+        interface ITestHostLauncher2 with
+            member this.LaunchTestHost(defaultTestHostStartInfo: TestProcessStartInfo) =
+                (this :> ITestHostLauncher)
+                    .LaunchTestHost(defaultTestHostStartInfo, CancellationToken.None)
+
+            member _.LaunchTestHost(_defaultTestHostStartInfo: TestProcessStartInfo, _ct: CancellationToken) = 1
+
+            member this.AttachDebuggerToProcess(pid: int) =
+                (this :> ITestHostLauncher2)
+                    .AttachDebuggerToProcess(pid, CancellationToken.None)
+
+            member _.AttachDebuggerToProcess(pid: int, ct: CancellationToken) =
+                use cts = CancellationTokenSource.CreateLinkedTokenSource(ct)
+                cts.CancelAfter(TimeSpan.FromSeconds(450))
+
+                do
+                    Console.WriteLine($"spawned test process with pid: {pid}")
+                    use pidWriter = new StreamWriter(pidFile, append = false)
+                    pidWriter.WriteLine(pid)
+
+                while not (cts.Token.IsCancellationRequested || File.Exists(attachedFile)) do
+                    ()
+
+                File.Exists(attachedFile)
+
+            member __.IsDebug = true
+
+
     let main (argv: string[]) =
         if argv.Length <> 1 then
             invalidArg "CommandLineArgs" "Usage: fsi script.fsx <vstest-console-path>"
@@ -152,30 +207,53 @@ module TestDiscovery =
         while loop do
             match Console.ReadLine() with
             | DiscoveryRequest args ->
+                discoveryCompleteEvent.Reset()
                 r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
+                let _ = discoveryCompleteEvent.Wait(TimeSpan.FromSeconds(5))
 
                 use streamWriter = new StreamWriter(args.OutputPath, append = false)
+
                 discoveredTests
                 |> _.Values
                 |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
                 |> Map
-                |> JsonConvert.SerializeObject 
+                |> JsonConvert.SerializeObject
                 |> streamWriter.WriteLine
 
                 Console.WriteLine($"Wrote test results to {args.OutputPath}")
             | RunTests args ->
                 let idMap =
-                  discoveredTests
-                  |> _.Values
-                  |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
-                  |> Map
+                    discoveredTests
+                    |> _.Values
+                    |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
+                    |> Map
 
-                let testCases =
-                  args.Ids
-                  |> Array.choose (fun id -> Map.tryFind id idMap)
+                let testCases = args.Ids |> Array.choose (fun id -> Map.tryFind id idMap)
 
                 let testHandler = PlaygroundTestRunHandler(args.StreamPath, args.OutputPath)
-                r.RunTests(testCases, sourceSettings, testHandler)
+                // spawn as task to allow running concurrent tests
+                r.RunTestsAsync(testCases, sourceSettings, testHandler) |> ignore
+                ()
+            | DebugTests args ->
+                let idMap =
+                    discoveredTests
+                    |> _.Values
+                    |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
+                    |> Map
+
+                let testCases = args.Ids |> Array.choose (fun id -> Map.tryFind id idMap)
+
+                let testHandler = PlaygroundTestRunHandler(args.StreamPath, args.OutputPath)
+                let debugLauncher = DebugLauncher(args.PidPath, args.AttachedPath)
+                Console.WriteLine($"Starting {testCases.Length} tests in debug-mode")
+
+                task {
+                    do! Task.Yield()
+                    r.RunTestsWithCustomTestHost(testCases, sourceSettings, testHandler, debugLauncher)
+                }
+                |> ignore
+
+                ()
             | _ -> loop <- false
 
         r.EndSession()
