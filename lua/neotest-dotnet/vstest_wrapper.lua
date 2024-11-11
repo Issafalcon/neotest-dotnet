@@ -23,7 +23,7 @@ local function get_vstest_path()
       logger.info(string.format("failed to detect sdk path. falling back to %s", M.sdk_path))
     else
       local out = process.stdout.read()
-      M.sdk_path = out:match("Base Path:%s*(%S+)")
+      M.sdk_path = out and out:match("Base Path:%s*(%S+)")
       logger.info(string.format("detected sdk path: %s", M.sdk_path))
       process.close()
     end
@@ -39,6 +39,38 @@ local function get_script(script_name)
       return path
     end
   end
+end
+
+local proj_file_path_map = {}
+
+---collects project information based on file
+---@param path string
+---@return { proj_file: string, proj_name: string, dll_file: string, proj_dir: string }
+function M.get_proj_info(path)
+  if proj_file_path_map[path] then
+    return proj_file_path_map[path]
+  end
+
+  local proj_file = vim.fs.find(function(name, _)
+    return name:match("%.[cf]sproj$")
+  end, { type = "file", path = vim.fs.dirname(path) })[1]
+
+  local dir_name = vim.fs.dirname(proj_file)
+  local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
+
+  local proj_dll_path =
+    -- TODO: this might break if the project has been compiled as both Development and Release.
+    vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
+
+  local proj_data = {
+    proj_file = proj_file,
+    proj_name = proj_name,
+    dll_file = proj_dll_path,
+    proj_dir = dir_name,
+  }
+
+  proj_file_path_map[path] = proj_data
+  return proj_data
 end
 
 local test_runner
@@ -84,10 +116,10 @@ end
 
 local spin_lock = nio.control.semaphore(1)
 
----Repeatly tries to read content. Repeats untill the file is non-empty or operation times out.
+---Repeatly tries to read content. Repeats until the file is non-empty or operation times out.
 ---@param file_path string
----@param max_wait integer maximal time to wait for the file to populated in miliseconds.
----@return string
+---@param max_wait integer maximal time to wait for the file to populated in milliseconds.
+---@return string?
 function M.spin_lock_wait_file(file_path, max_wait)
   local content
 
@@ -116,27 +148,22 @@ end
 local discovery_cache = {}
 local discovery_lock = nio.control.semaphore(1)
 
----@param proj_file string
+---@param path string
 ---@return table test_cases
-function M.discover_tests(proj_file)
+function M.discover_tests(path)
   local output_file = nio.fn.tempname()
 
-  local dir_name = vim.fs.dirname(proj_file)
-  local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
+  local proj_info = M.get_proj_info(path)
 
-  local proj_dll_path =
-    -- TODO: this might break if the project has been compiled as both Development and Release.
-    vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
-
-  lib.process.run({ "dotnet", "build", proj_file })
+  lib.process.run({ "dotnet", "build", proj_info.proj_file })
 
   local json
 
   discovery_lock.with(function()
-    local open_err, stats = nio.uv.fs_stat(proj_dll_path)
+    local open_err, stats = nio.uv.fs_stat(proj_info.dll_file)
     assert(not open_err, open_err)
 
-    local cached = discovery_cache[proj_dll_path]
+    local cached = discovery_cache[proj_info.dll_file]
     local modified_time = stats.mtime and stats.mtime.sec
 
     if
@@ -153,7 +180,7 @@ function M.discover_tests(proj_file)
     logger.debug(
       string.format(
         "cache not hit: %s %s %s",
-        proj_dll_path,
+        proj_info.dll_file,
         cached and cached.last_modified,
         modified_time
       )
@@ -163,7 +190,7 @@ function M.discover_tests(proj_file)
       .iter({
         "discover",
         output_file,
-        proj_dll_path,
+        proj_info.dll_file,
       })
       :flatten()
       :join(" ")
@@ -177,14 +204,13 @@ function M.discover_tests(proj_file)
 
     local max_wait = 10 * 1000 -- 10 sec
 
-    json = vim.json.decode(
-      M.spin_lock_wait_file(output_file, max_wait),
-      { luanil = { object = true } }
-    ) or {}
+    local content = M.spin_lock_wait_file(output_file, max_wait)
+
+    json = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
 
     logger.debug("file has been populated. Extracting test cases")
 
-    discovery_cache[proj_dll_path] = {
+    discovery_cache[proj_info.dll_file] = {
       last_modified = modified_time,
       content = json,
     }
@@ -221,7 +247,7 @@ end
 ---@param stream_path string
 ---@param output_path string
 ---@param ids string|string[]
----@return integer pid
+---@return string? pid
 function M.debug_tests(pid_path, attached_path, stream_path, output_path, ids)
   lib.process.run({ "dotnet", "build" })
 

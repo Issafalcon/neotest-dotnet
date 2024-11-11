@@ -88,29 +88,13 @@ local function get_match_type(captured_nodes)
   end
 end
 
-local proj_file_path_map = {}
-
-local function get_proj_file(path)
-  if proj_file_path_map[path] then
-    return proj_file_path_map[path]
-  end
-
-  local proj_file = vim.fs.find(function(name, _)
-    return name:match("%.[cf]sproj$")
-  end, { type = "file", path = vim.fs.dirname(path) })[1]
-
-  proj_file_path_map[path] = proj_file
-  return proj_file
-end
-
 ---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
   local filetype = (vim.endswith(path, ".fs") and "fsharp") or "c_sharp"
-  local proj_dll_path = get_proj_file(path)
 
   local tests_in_file = vim
-    .iter(vstest.discover_tests(proj_dll_path))
+    .iter(vstest.discover_tests(path))
     :map(function(_, v)
       return v
     end)
@@ -140,7 +124,6 @@ DotnetNeotestAdapter.discover_positions = function(path)
               path = path,
               name = test.DisplayName,
               qualified_name = test.FullyQualifiedName,
-              proj_dll_path = test.Source,
               range = { definition:range() },
             })
           end
@@ -151,7 +134,6 @@ DotnetNeotestAdapter.discover_positions = function(path)
           type = match_type,
           path = path,
           name = string.gsub(name, "``", ""),
-          proj_dll_path = proj_dll_path,
           range = { definition:range() },
         })
       end
@@ -249,7 +231,7 @@ DotnetNeotestAdapter.build_spec = function(args)
       type = "netcoredbg",
       name = "netcoredbg - attach",
       request = "attach",
-      cwd = vim.fs.dirname(get_proj_file(pos.path)),
+      cwd = vstest.get_proj_info(pos.path).proj_dir,
       env = {
         DOTNET_ENVIRONMENT = "Development",
       },
