@@ -119,9 +119,6 @@ DotnetNeotestAdapter.discover_positions = function(path)
     end)
     :totable()
 
-  logger.debug("filtered test cases:")
-  logger.debug(tests_in_file)
-
   local tree
 
   ---@return nil | neotest.Position | neotest.Position[]

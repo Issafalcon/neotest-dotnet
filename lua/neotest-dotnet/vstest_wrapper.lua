@@ -54,9 +54,9 @@ local spin_lock = nio.control.semaphore(1)
 ---Repeatly tries to read content. Repeats untill the file is non-empty or operation times out.
 ---@param file_path string
 ---@param max_wait integer maximal time to wait for the file to populated in miliseconds.
----@return table|string
+---@return string
 function M.spin_lock_wait_file(file_path, max_wait)
-  local json = {}
+  local content
 
   local sleep_time = 25 -- scan every 25 ms
   local tries = 1
@@ -68,7 +68,7 @@ function M.spin_lock_wait_file(file_path, max_wait)
         local file, open_err = nio.file.open(file_path)
         assert(not open_err, open_err)
         file_exists = true
-        json = file.read()
+        content = file.read()
         file.close()
       end)
     else
@@ -77,8 +77,11 @@ function M.spin_lock_wait_file(file_path, max_wait)
     end
   end
 
-  return json
+  return content
 end
+
+local discovery_cache = {}
+local discovery_lock = nio.control.semaphore(1)
 
 ---@param proj_file string
 ---@return table test_cases
@@ -93,28 +96,65 @@ function M.discover_tests(proj_file)
 
   lib.process.run({ "dotnet", "build", proj_file })
 
-  local command = vim
-    .iter({
-      "discover",
-      output_file,
-      proj_dll_path,
-    })
-    :flatten()
-    :join(" ")
+  local json
 
-  logger.debug("Discovering tests using:")
-  logger.debug(command)
+  discovery_lock.with(function()
+    local open_err, stats = nio.uv.fs_stat(proj_dll_path)
+    assert(not open_err, open_err)
 
-  invoke_test_runner(command)
+    local cached = discovery_cache[proj_dll_path]
+    local modified_time = stats.mtime and stats.mtime.sec
 
-  logger.debug("Waiting for result file to populate...")
+    if
+      cached
+      and cached.last_modified
+      and modified_time
+      and modified_time <= cached.last_modified
+    then
+      logger.debug("cache hit")
+      json = cached.content
+      return
+    end
 
-  local max_wait = 10 * 1000 -- 10 sec
+    logger.debug(
+      string.format(
+        "cache not hit: %s %s %s",
+        proj_dll_path,
+        cached and cached.last_modified,
+        modified_time
+      )
+    )
 
-  local json =
-    vim.json.decode(M.spin_lock_wait_file(output_file, max_wait), { luanil = { object = true } })
+    local command = vim
+      .iter({
+        "discover",
+        output_file,
+        proj_dll_path,
+      })
+      :flatten()
+      :join(" ")
 
-  logger.debug("file has been populated. Extracting test cases")
+    logger.debug("Discovering tests using:")
+    logger.debug(command)
+
+    invoke_test_runner(command)
+
+    logger.debug("Waiting for result file to populate...")
+
+    local max_wait = 10 * 1000 -- 10 sec
+
+    json = vim.json.decode(
+      M.spin_lock_wait_file(output_file, max_wait),
+      { luanil = { object = true } }
+    ) or {}
+
+    logger.debug("file has been populated. Extracting test cases")
+
+    discovery_cache[proj_dll_path] = {
+      last_modified = modified_time,
+      content = json,
+    }
+  end)
 
   return json
 end
