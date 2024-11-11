@@ -4,6 +4,34 @@ local logger = require("neotest.logging")
 
 local M = {}
 
+M.sdk_path = nil
+
+local function get_vstest_path()
+  if not M.sdk_path then
+    local process, errors = nio.process.run({
+      cmd = "dotnet",
+      args = { "--info" },
+    })
+
+    if not process or errors then
+      if vim.fn.has("win32") then
+        M.sdk_path = "C:/Program Files/dotnet/sdk/"
+      else
+        M.sdk_path = "/usr/local/share/dotnet/sdk/"
+      end
+
+      logger.info(string.format("failed to detect sdk path. falling back to %s", M.sdk_path))
+    else
+      local out = process.stdout.read()
+      M.sdk_path = out:match("Base Path:%s*(%S+)")
+      logger.info(string.format("detected sdk path: %s", M.sdk_path))
+      process.close()
+    end
+  end
+
+  return vim.fs.find("vstest.console.dll", { upward = false, type = "file", path = M.sdk_path })[1]
+end
+
 local function get_script(script_name)
   local script_paths = vim.api.nvim_get_runtime_file(script_name, true)
   for _, path in ipairs(script_paths) do
@@ -23,9 +51,14 @@ local function invoke_test_runner(command)
     end
 
     local test_discovery_script = get_script("run_tests.fsx")
-    local testhost_dll = "/usr/local/share/dotnet/sdk/8.0.401/vstest.console.dll"
+    local testhost_dll = get_vstest_path()
 
-    local process = vim.system({ "dotnet", "fsi", test_discovery_script, testhost_dll }, {
+    local vstest_command = { "dotnet", "fsi", test_discovery_script, testhost_dll }
+
+    logger.info("starting vstest console with:")
+    logger.info(vstest_command)
+
+    local process = vim.system(vstest_command, {
       stdin = true,
       stdout = function(err, data)
         logger.trace(data)
@@ -92,6 +125,7 @@ function M.discover_tests(proj_file)
   local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
 
   local proj_dll_path =
+    -- TODO: this might break if the project has been compiled as both Development and Release.
     vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
 
   lib.process.run({ "dotnet", "build", proj_file })
