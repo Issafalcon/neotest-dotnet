@@ -141,26 +141,37 @@ function M.spin_lock_wait_file(file_path, max_wait)
     end
   end
 
+  if not content then
+    logger.warn(string.format("timed out reading content of file %s", file_path))
+  end
+
   return content
 end
 
 local discovery_cache = {}
-local discovery_lock = nio.control.semaphore(1)
+local build_semaphore = nio.control.semaphore(1)
+
+---@class TestCase
+---@field Id string
+---@field CodeFilePath string
+---@field DisplayName string
+---@field FullyQualifiedName string
+---@field Source string
 
 ---@param path string
----@return table test_cases
+---@return table<string, TestCase> test_cases
 function M.discover_tests(path)
   local json = {}
   local proj_info = M.get_proj_info(path)
-
-  discovery_lock.acquire()
 
   if not proj_info.dll_file then
     logger.warn(string.format("failed to find dll for file: %s", path))
     return json
   end
 
-  lib.process.run({ "dotnet", "build", proj_info.proj_file })
+  build_semaphore.with(function()
+    lib.process.run({ "dotnet", "build", proj_info.proj_file })
+  end)
 
   local open_err, stats = nio.uv.fs_stat(proj_info.dll_file)
   assert(not open_err, open_err)
@@ -174,19 +185,8 @@ function M.discover_tests(path)
     and modified_time
     and modified_time <= cached.last_modified
   then
-    logger.debug("cache hit")
-    discovery_lock.release()
     return cached.content
   end
-
-  logger.debug(
-    string.format(
-      "cache not hit: %s %s %s",
-      proj_info.dll_file,
-      cached and cached.last_modified,
-      modified_time
-    )
-  )
 
   local wait_file = nio.fn.tempname()
   local output_file = nio.fn.tempname()
@@ -206,7 +206,7 @@ function M.discover_tests(path)
 
   invoke_test_runner(command)
 
-  logger.debug("Waiting for result file to populate...")
+  logger.debug(string.format("Waiting for result file to populate for %s...", proj_info.proj_file))
 
   local max_wait = 30 * 1000 -- 10 sec
 
@@ -223,8 +223,6 @@ function M.discover_tests(path)
       content = json,
     }
   end
-
-  discovery_lock.release()
 
   return json
 end

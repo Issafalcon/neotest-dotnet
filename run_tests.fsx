@@ -17,6 +17,8 @@ open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
 
 module TestDiscovery =
+    open System.Collections.Concurrent
+
     [<return: Struct>]
     let (|DiscoveryRequest|_|) (str: string) =
         if str.StartsWith("discover") then
@@ -61,25 +63,33 @@ module TestDiscovery =
         else
             ValueOption.None
 
-    let discoveryCompleteEvent = new ManualResetEventSlim()
+    let discoveredTests = ConcurrentDictionary<string, TestCase seq>()
 
-    let discoveredTests = Dictionary<string, TestCase seq>()
-
-    type PlaygroundTestDiscoveryHandler() =
+    type PlaygroundTestDiscoveryHandler(resultFilePath, waitFilePath) =
         interface ITestDiscoveryEventsHandler2 with
             member _.HandleDiscoveredTests(discoveredTestCases: IEnumerable<TestCase>) =
                 discoveredTestCases
                 |> Seq.groupBy _.CodeFilePath
                 |> Seq.iter (fun (file, testCases) ->
-                    if discoveredTests.ContainsKey file then
-                        discoveredTests.Remove(file) |> ignore
+                    discoveredTests.AddOrUpdate(file, testCases, (fun _ _ -> testCases)) |> ignore)
 
-                    discoveredTests.Add(file, testCases))
+                use testsWriter = new StreamWriter(resultFilePath, append = false)
 
-            member _.HandleDiscoveryComplete(_, _) = discoveryCompleteEvent.Set()
+                discoveredTests
+                |> _.Values
+                |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
+                |> Map
+                |> JsonConvert.SerializeObject
+                |> testsWriter.WriteLine
 
-            member _.HandleLogMessage(_, _) = ()
-            member _.HandleRawMessage(_) = ()
+                use waitFileWriter = new StreamWriter(waitFilePath, append = false)
+                waitFileWriter.WriteLine("1")
+
+                Console.WriteLine($"Wrote test results to {resultFilePath}")
+
+            member _.HandleDiscoveryComplete(_, _) = ()
+            member __.HandleLogMessage(_, _) = ()
+            member __.HandleRawMessage(_) = ()
 
     type PlaygroundTestRunHandler(streamOutputPath, outputFilePath) =
         interface ITestRunEventsHandler with
@@ -195,7 +205,6 @@ module TestDiscovery =
             VsTestConsoleWrapper(console, ConsoleParameters(EnvironmentVariables = environmentVariables))
 
         let testSession = TestSessionInfo()
-        let discoveryHandler = PlaygroundTestDiscoveryHandler()
 
         r.StartSession()
 
@@ -204,23 +213,16 @@ module TestDiscovery =
         while loop do
             match Console.ReadLine() with
             | DiscoveryRequest args ->
-                discoveryCompleteEvent.Reset()
-                r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
-                let _ = discoveryCompleteEvent.Wait(TimeSpan.FromSeconds(30))
+                // spawn as task to allow running discovery
+                task {
+                    do! Task.Yield()
 
-                use testsWriter = new StreamWriter(args.OutputPath, append = false)
+                    let discoveryHandler =
+                        PlaygroundTestDiscoveryHandler(args.OutputPath, args.WaitFile) :> ITestDiscoveryEventsHandler2
 
-                discoveredTests
-                |> _.Values
-                |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
-                |> Map
-                |> JsonConvert.SerializeObject
-                |> testsWriter.WriteLine
-
-                use waitFileWriter = new StreamWriter(args.WaitFile, append = false)
-                waitFileWriter.WriteLine("1")
-
-                Console.WriteLine($"Wrote test results to {args.OutputPath}")
+                    r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
+                }
+                |> ignore
             | RunTests args ->
                 let idMap =
                     discoveredTests

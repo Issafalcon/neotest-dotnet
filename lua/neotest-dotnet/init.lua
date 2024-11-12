@@ -14,10 +14,17 @@ DotnetNeotestAdapter.root = function(path)
 end
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
-  return (vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs"))
-    and vim.iter(vstest.discover_tests(file_path)):any(function(_, test)
-      return test.CodeFilePath == file_path
-    end)
+  if not (vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs")) then
+    return false
+  else
+    for _, test in pairs(vstest.discover_tests(file_path)) do
+      if test.CodeFilePath == file_path then
+        return true
+      end
+    end
+  end
+
+  return false
 end
 
 DotnetNeotestAdapter.filter_dir = function(name)
@@ -70,6 +77,8 @@ local function build_position(source, captured_nodes, tests_in_file, path)
 end
 
 DotnetNeotestAdapter.discover_positions = function(path)
+  logger.info(string.format("scanning %s for tests...", path))
+
   local fsharp_query = require("neotest-dotnet.queries.fsharp")
   local c_sharp_query = require("neotest-dotnet.queries.c_sharp")
 
@@ -141,6 +150,8 @@ DotnetNeotestAdapter.discover_positions = function(path)
       end,
     })
   end
+
+  logger.info(string.format("done scanning %s for tests", path))
 
   return tree
 end
