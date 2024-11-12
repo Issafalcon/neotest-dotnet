@@ -4,6 +4,8 @@ local logger = require("neotest.logging")
 
 local vstest = require("neotest-dotnet.vstest_wrapper")
 
+---@package
+---@type neotest.Adapter
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
 DotnetNeotestAdapter.root = function(path)
@@ -12,72 +14,15 @@ DotnetNeotestAdapter.root = function(path)
 end
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
-  return vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs")
+  return (vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs"))
+    and vim.iter(vstest.discover_tests(file_path)):any(function(_, test)
+      return test.CodeFilePath == file_path
+    end)
 end
 
 DotnetNeotestAdapter.filter_dir = function(name)
   return name ~= "bin" and name ~= "obj"
 end
-
-local fsharp_query = [[
-    (namespace
-        name: (long_identifier) @namespace.name
-    ) @namespace.definition
-
-    (anon_type_defn
-       (type_name (identifier) @namespace.name)
-    ) @namespace.definition
-
-    (named_module
-        name: (long_identifier) @namespace.name
-    ) @namespace.definition
-
-    (module_defn
-        (identifier) @namespace.name
-    ) @namespace.definition
-
-    (declaration_expression
-      (function_or_value_defn
-        (function_declaration_left . (_) @test.name))
-    ) @test.definition
-
-    (member_defn
-      (method_or_prop_defn
-        (property_or_ident
-           (identifier) @test.name .))
-    ) @test.definition
-]]
-
-local c_sharp_query = [[
-    ;; Matches namespace with a '.' in the name
-    (namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches namespace with a single identifier (no '.')
-    (namespace_declaration
-        name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches file-scoped namespaces (qualified and unqualified respectively)
-    (file_scoped_namespace_declaration
-        name: (qualified_name) @namespace.name
-    ) @namespace.definition
-
-    (file_scoped_namespace_declaration
-        name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches XUnit test class (has no specific attributes on class)
-    (class_declaration
-      name: (identifier) @namespace.name
-    ) @namespace.definition
-
-    ;; Matches test methods
-    (method_declaration
-      name: (identifier) @test.name
-    ) @test.definition
-]]
 
 local function get_match_type(captured_nodes)
   if captured_nodes["test.name"] then
@@ -88,9 +33,46 @@ local function get_match_type(captured_nodes)
   end
 end
 
----@param path any The path to the file to discover positions in
----@return neotest.Tree
+---@return nil | neotest.Position | neotest.Position[]
+local function build_position(source, captured_nodes, tests_in_file, path)
+  local match_type = get_match_type(captured_nodes)
+  if match_type then
+    local definition = captured_nodes[match_type .. ".definition"]
+
+    local positions = {}
+
+    if match_type == "test" then
+      for _, test in ipairs(tests_in_file) do
+        if
+          definition:start() <= test.LineNumber - 1 and test.LineNumber - 1 <= definition:end_()
+        then
+          table.insert(positions, {
+            id = test.Id,
+            type = match_type,
+            path = path,
+            name = test.DisplayName,
+            qualified_name = test.FullyQualifiedName,
+            range = { definition:range() },
+          })
+        end
+      end
+    else
+      local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
+      table.insert(positions, {
+        type = match_type,
+        path = path,
+        name = string.gsub(name, "``", ""),
+        range = { definition:range() },
+      })
+    end
+    return positions
+  end
+end
+
 DotnetNeotestAdapter.discover_positions = function(path)
+  local fsharp_query = require("neotest-dotnet.queries.fsharp")
+  local c_sharp_query = require("neotest-dotnet.queries.c_sharp")
+
   local filetype = (vim.endswith(path, ".fs") and "fsharp") or "c_sharp"
 
   local tests_in_file = vim
@@ -103,43 +85,8 @@ DotnetNeotestAdapter.discover_positions = function(path)
     end)
     :totable()
 
+  ---@type neotest.Tree?
   local tree
-
-  ---@return nil | neotest.Position | neotest.Position[]
-  local function build_position(source, captured_nodes)
-    local match_type = get_match_type(captured_nodes)
-    if match_type then
-      local definition = captured_nodes[match_type .. ".definition"]
-
-      local positions = {}
-
-      if match_type == "test" then
-        for _, test in ipairs(tests_in_file) do
-          if
-            definition:start() <= test.LineNumber - 1 and test.LineNumber - 1 <= definition:end_()
-          then
-            table.insert(positions, {
-              id = test.Id,
-              type = match_type,
-              path = path,
-              name = test.DisplayName,
-              qualified_name = test.FullyQualifiedName,
-              range = { definition:range() },
-            })
-          end
-        end
-      else
-        local name = vim.treesitter.get_node_text(captured_nodes[match_type .. ".name"], source)
-        table.insert(positions, {
-          type = match_type,
-          path = path,
-          name = string.gsub(name, "``", ""),
-          range = { definition:range() },
-        })
-      end
-      return positions
-    end
-  end
 
   if #tests_in_file > 0 then
     local content = lib.files.read(path)
@@ -168,7 +115,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
       for i, capture in ipairs(query.captures) do
         captured_nodes[capture] = match[i]
       end
-      local res = build_position(content, captured_nodes)
+      local res = build_position(content, captured_nodes, tests_in_file, path)
       if res then
         for _, pos in ipairs(res) do
           nodes[#nodes + 1] = pos
@@ -198,9 +145,6 @@ DotnetNeotestAdapter.discover_positions = function(path)
   return tree
 end
 
----@summary Neotest core interface method: Build specs for running tests
----@param args neotest.RunArgs
----@return nil | neotest.RunSpec | neotest.RunSpec[]
 DotnetNeotestAdapter.build_spec = function(args)
   local tree = args.tree
   if not tree then
@@ -270,12 +214,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   }
 end
 
----@async
----@param spec neotest.RunSpec
----@param run neotest.StrategyResult
----@param tree neotest.Tree
----@return neotest.Result[]
-DotnetNeotestAdapter.results = function(spec, run, tree)
+DotnetNeotestAdapter.results = function(spec)
   local max_wait = 5 * 50 * 1000 -- 5 min
   local success, data = pcall(vstest.spin_lock_wait_file, spec.context.result_path, max_wait)
 
