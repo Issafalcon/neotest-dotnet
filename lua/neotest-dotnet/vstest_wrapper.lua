@@ -45,7 +45,7 @@ local proj_file_path_map = {}
 
 ---collects project information based on file
 ---@param path string
----@return { proj_file: string, proj_name: string, dll_file: string, proj_dir: string }
+---@return { proj_file: string, dll_file: string, proj_dir: string }
 function M.get_proj_info(path)
   if proj_file_path_map[path] then
     return proj_file_path_map[path]
@@ -64,7 +64,6 @@ function M.get_proj_info(path)
 
   local proj_data = {
     proj_file = proj_file,
-    proj_name = proj_name,
     dll_file = proj_dll_path,
     proj_dir = dir_name,
   }
@@ -151,59 +150,68 @@ local discovery_lock = nio.control.semaphore(1)
 ---@param path string
 ---@return table test_cases
 function M.discover_tests(path)
-  local output_file = nio.fn.tempname()
-
+  local json = {}
   local proj_info = M.get_proj_info(path)
+
+  discovery_lock.acquire()
+
+  if not proj_info.dll_file then
+    logger.warn(string.format("failed to find dll for file: %s", path))
+    return json
+  end
 
   lib.process.run({ "dotnet", "build", proj_info.proj_file })
 
-  local json
+  local open_err, stats = nio.uv.fs_stat(proj_info.dll_file)
+  assert(not open_err, open_err)
 
-  discovery_lock.with(function()
-    local open_err, stats = nio.uv.fs_stat(proj_info.dll_file)
-    assert(not open_err, open_err)
+  local cached = discovery_cache[proj_info.dll_file]
+  local modified_time = stats.mtime and stats.mtime.sec
 
-    local cached = discovery_cache[proj_info.dll_file]
-    local modified_time = stats.mtime and stats.mtime.sec
+  if
+    cached
+    and cached.last_modified
+    and modified_time
+    and modified_time <= cached.last_modified
+  then
+    logger.debug("cache hit")
+    discovery_lock.release()
+    return cached.content
+  end
 
-    if
-      cached
-      and cached.last_modified
-      and modified_time
-      and modified_time <= cached.last_modified
-    then
-      logger.debug("cache hit")
-      json = cached.content
-      return
-    end
-
-    logger.debug(
-      string.format(
-        "cache not hit: %s %s %s",
-        proj_info.dll_file,
-        cached and cached.last_modified,
-        modified_time
-      )
+  logger.debug(
+    string.format(
+      "cache not hit: %s %s %s",
+      proj_info.dll_file,
+      cached and cached.last_modified,
+      modified_time
     )
+  )
 
-    local command = vim
-      .iter({
-        "discover",
-        output_file,
-        proj_info.dll_file,
-      })
-      :flatten()
-      :join(" ")
+  local wait_file = nio.fn.tempname()
+  local output_file = nio.fn.tempname()
 
-    logger.debug("Discovering tests using:")
-    logger.debug(command)
+  local command = vim
+    .iter({
+      "discover",
+      output_file,
+      wait_file,
+      proj_info.dll_file,
+    })
+    :flatten()
+    :join(" ")
 
-    invoke_test_runner(command)
+  logger.debug("Discovering tests using:")
+  logger.debug(command)
 
-    logger.debug("Waiting for result file to populate...")
+  invoke_test_runner(command)
 
-    local max_wait = 10 * 1000 -- 10 sec
+  logger.debug("Waiting for result file to populate...")
 
+  local max_wait = 30 * 1000 -- 10 sec
+
+  local done = M.spin_lock_wait_file(wait_file, max_wait)
+  if done then
     local content = M.spin_lock_wait_file(output_file, max_wait)
 
     json = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
@@ -214,7 +222,9 @@ function M.discover_tests(path)
       last_modified = modified_time,
       content = json,
     }
-  end)
+  end
+
+  discovery_lock.release()
 
   return json
 end

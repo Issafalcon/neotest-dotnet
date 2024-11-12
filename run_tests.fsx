@@ -17,8 +17,6 @@ open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
 
 module TestDiscovery =
-    open System.Threading
-
     [<return: Struct>]
     let (|DiscoveryRequest|_|) (str: string) =
         if str.StartsWith("discover") then
@@ -26,8 +24,9 @@ module TestDiscovery =
                 str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
                 |> Array.tail
 
-            {| OutputPath = Array.head args
-               Sources = args |> Array.tail |}
+            {| OutputPath = args[0]
+               WaitFile = args[1]
+               Sources = args[2..] |}
             |> ValueOption.Some
         else
             ValueOption.None
@@ -77,9 +76,7 @@ module TestDiscovery =
 
                     discoveredTests.Add(file, testCases))
 
-                discoveryCompleteEvent.Set()
-
-            member _.HandleDiscoveryComplete(_, _) = ()
+            member _.HandleDiscoveryComplete(_, _) = discoveryCompleteEvent.Set()
 
             member _.HandleLogMessage(_, _) = ()
             member _.HandleRawMessage(_) = ()
@@ -209,16 +206,19 @@ module TestDiscovery =
             | DiscoveryRequest args ->
                 discoveryCompleteEvent.Reset()
                 r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
-                let _ = discoveryCompleteEvent.Wait(TimeSpan.FromSeconds(5))
+                let _ = discoveryCompleteEvent.Wait(TimeSpan.FromSeconds(30))
 
-                use streamWriter = new StreamWriter(args.OutputPath, append = false)
+                use testsWriter = new StreamWriter(args.OutputPath, append = false)
 
                 discoveredTests
                 |> _.Values
                 |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
                 |> Map
                 |> JsonConvert.SerializeObject
-                |> streamWriter.WriteLine
+                |> testsWriter.WriteLine
+
+                use waitFileWriter = new StreamWriter(args.WaitFile, append = false)
+                waitFileWriter.WriteLine("1")
 
                 Console.WriteLine($"Wrote test results to {args.OutputPath}")
             | RunTests args ->
