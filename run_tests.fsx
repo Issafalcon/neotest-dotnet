@@ -71,7 +71,7 @@ module TestDiscovery =
 
     let discoveredTests = ConcurrentDictionary<string, TestCase seq>()
 
-    type PlaygroundTestDiscoveryHandler(resultFilePath, waitFilePath) =
+    type PlaygroundTestDiscoveryHandler() =
         interface ITestDiscoveryEventsHandler2 with
             member _.HandleDiscoveredTests(discoveredTestCases: IEnumerable<TestCase>) =
                 discoveredTestCases
@@ -79,27 +79,6 @@ module TestDiscovery =
                 |> Seq.iter (fun (file, testCases) ->
                     discoveredTests.AddOrUpdate(file, testCases, (fun _ _ -> testCases)) |> ignore)
 
-                use testsWriter = new StreamWriter(resultFilePath, append = false)
-
-                discoveredTests
-                |> Seq.map (fun x ->
-                    (x.Key,
-                     x.Value
-                     |> Seq.map (fun testCase ->
-                         testCase.Id,
-                         { CodeFilePath = testCase.CodeFilePath
-                           DisplayName = testCase.DisplayName
-                           LineNumber = testCase.LineNumber
-                           FullyQualifiedName = testCase.FullyQualifiedName })
-                     |> Map))
-                |> Map
-                |> JsonConvert.SerializeObject
-                |> testsWriter.WriteLine
-
-                use waitFileWriter = new StreamWriter(waitFilePath, append = false)
-                waitFileWriter.WriteLine("1")
-
-                Console.WriteLine($"Wrote test results to {resultFilePath}")
 
             member _.HandleDiscoveryComplete(_, _) = ()
             member __.HandleLogMessage(_, _) = ()
@@ -232,9 +211,30 @@ module TestDiscovery =
                     do! Task.Yield()
 
                     let discoveryHandler =
-                        PlaygroundTestDiscoveryHandler(args.OutputPath, args.WaitFile) :> ITestDiscoveryEventsHandler2
+                        PlaygroundTestDiscoveryHandler() :> ITestDiscoveryEventsHandler2
 
                     r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
+                    use testsWriter = new StreamWriter(args.OutputPath, append = false)
+
+                    discoveredTests
+                    |> Seq.map (fun x ->
+                        (x.Key,
+                         x.Value
+                         |> Seq.map (fun testCase ->
+                             testCase.Id,
+                             { CodeFilePath = testCase.CodeFilePath
+                               DisplayName = testCase.DisplayName
+                               LineNumber = testCase.LineNumber
+                               FullyQualifiedName = testCase.FullyQualifiedName })
+                         |> Map))
+                    |> Map
+                    |> JsonConvert.SerializeObject
+                    |> testsWriter.WriteLine
+
+                    use waitFileWriter = new StreamWriter(args.WaitFile, append = false)
+                    waitFileWriter.WriteLine("1")
+
+                    Console.WriteLine($"Wrote test results to {args.WaitFile}")
                 }
                 |> ignore
             | RunTests args ->

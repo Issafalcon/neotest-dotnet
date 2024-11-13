@@ -53,14 +53,16 @@ function M.get_proj_info(path)
 
   local proj_file = vim.fs.find(function(name, _)
     return name:match("%.[cf]sproj$")
-  end, { type = "file", path = vim.fs.dirname(path) })[1]
+  end, { upward = true, type = "file", path = vim.fs.dirname(path) })[1]
 
   local dir_name = vim.fs.dirname(proj_file)
   local proj_name = vim.fn.fnamemodify(proj_file, ":t:r")
 
   local proj_dll_path =
     -- TODO: this might break if the project has been compiled as both Development and Release.
-    vim.fs.find(proj_name .. ".dll", { upward = false, type = "file", path = dir_name })[1]
+    vim.fs.find(function(name)
+      return string.lower(name) == string.lower(proj_name .. ".dll")
+    end, { type = "file", path = dir_name })[1]
 
   local proj_data = {
     proj_file = proj_file,
@@ -149,7 +151,7 @@ function M.spin_lock_wait_file(file_path, max_wait)
 end
 
 local discovery_cache = {}
-local build_semaphore = nio.control.semaphore(1)
+local last_discovery = {}
 
 ---@class TestCase
 ---@field CodeFilePath string
@@ -163,39 +165,116 @@ function M.discover_tests(path)
   local json
   local proj_info = M.get_proj_info(path)
 
-  if not proj_info.dll_file then
-    logger.warn(string.format("failed to find dll for file: %s", path))
-    return json
+  if not (proj_info.proj_file and proj_info.dll_file) then
+    logger.warn(string.format("failed to find project file for %s", path))
+    return {}
   end
 
-  build_semaphore.with(function()
-    lib.process.run({ "dotnet", "build", proj_info.proj_file })
-  end)
-
-  local open_err, stats = nio.uv.fs_stat(proj_info.dll_file)
-  assert(not open_err, open_err)
-
-  local cached = discovery_cache[proj_info.dll_file]
-  local modified_time = stats.mtime and stats.mtime.sec
+  local path_open_err, path_stats = nio.uv.fs_stat(path)
 
   if
-    cached
-    and cached.last_modified
-    and modified_time
-    and modified_time <= cached.last_modified
+    not (
+      not path_open_err
+      and path_stats
+      and path_stats.mtime
+      and last_discovery[proj_info.proj_file]
+      and path_stats.mtime.sec <= last_discovery[proj_info.proj_file]
+    )
   then
-    return cached.content and cached.content[path]
+    local exitCode, stdout = lib.process.run(
+      { "dotnet", "build", proj_info.proj_file },
+      { stdout = true, stderr = true }
+    )
+    logger.debug(string.format("dotnet build status code: %s", exitCode))
+    logger.debug(stdout)
+  end
+
+  local dll_open_err, dll_stats = nio.uv.fs_stat(proj_info.dll_file)
+  assert(not dll_open_err, dll_open_err)
+
+  local path_modified_time = dll_stats and dll_stats.mtime and dll_stats.mtime.sec
+
+  if
+    last_discovery[proj_info.proj_file]
+    and path_modified_time
+    and path_modified_time <= last_discovery[proj_info.proj_file]
+  then
+    logger.debug(
+      string.format(
+        "cache hit for %s. %s - %s",
+        proj_info.proj_file,
+        path_modified_time,
+        last_discovery[proj_info.proj_file]
+      )
+    )
+    return discovery_cache[path]
+  else
+    logger.debug(
+      string.format(
+        "cache miss for %s... path: %s cache: %s - %s",
+        path,
+        path_modified_time,
+        proj_info.proj_file,
+        last_discovery[proj_info.dll_file]
+      )
+    )
+    logger.debug(last_discovery)
+  end
+
+  local dlls = {}
+
+  if vim.tbl_isempty(discovery_cache) then
+    local root = lib.files.match_root_pattern("*.sln")(path)
+      or lib.files.match_root_pattern("*.[cf]sproj")(path)
+
+    logger.debug(string.format("root: %s", root))
+
+    local projects = vim.fs.find(function(name, _)
+      return name:match("%.[cf]sproj$")
+    end, { type = "file", path = root, limit = math.huge })
+
+    for _, project in ipairs(projects) do
+      local dir_name = vim.fs.dirname(project)
+      local proj_name = vim.fn.fnamemodify(project, ":t:r")
+
+      local proj_dll_path =
+        -- TODO: this might break if the project has been compiled as both Development and Release.
+        vim.fs.find(function(name)
+          return string.lower(name) == string.lower(proj_name .. ".dll")
+        end, { type = "file", path = dir_name })[1]
+
+      if proj_dll_path then
+        dlls[#dlls + 1] = proj_dll_path
+        local project_open_err, project_stats = nio.uv.fs_stat(proj_dll_path)
+        last_discovery[project] = not project_open_err
+          and project_stats
+          and project_stats.mtime
+          and project_stats.mtime.sec
+      else
+        logger.warn(string.format("failed to find dll for %s", project))
+      end
+    end
+  else
+    dlls = { proj_info.dll_file }
+    last_discovery[proj_info.proj_file] = path_modified_time
+  end
+
+  if vim.tbl_isempty(dlls) then
+    return {}
   end
 
   local wait_file = nio.fn.tempname()
   local output_file = nio.fn.tempname()
+
+  logger.debug("found dlls:")
+  logger.debug(dlls)
 
   local command = vim
     .iter({
       "discover",
       output_file,
       wait_file,
-      proj_info.dll_file,
+      dlls,
     })
     :flatten()
     :join(" ")
@@ -205,7 +284,7 @@ function M.discover_tests(path)
 
   invoke_test_runner(command)
 
-  logger.debug(string.format("Waiting for result file to populate for %s...", proj_info.proj_file))
+  logger.debug("Waiting for result file to populated...")
 
   local max_wait = 30 * 1000 -- 30 sec
 
@@ -213,14 +292,15 @@ function M.discover_tests(path)
   if done then
     local content = M.spin_lock_wait_file(output_file, max_wait)
 
-    logger.debug("file has been populated. Extracting test cases")
+    logger.debug("file has been populated. Extracting test cases...")
 
     json = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
 
-    discovery_cache[proj_info.dll_file] = {
-      last_modified = modified_time,
-      content = json,
-    }
+    logger.debug("done decoding test cases.")
+
+    for file_path, test_map in pairs(json) do
+      discovery_cache[file_path] = test_map
+    end
   end
 
   return json and json[path]
