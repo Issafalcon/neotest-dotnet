@@ -14,17 +14,8 @@ DotnetNeotestAdapter.root = function(path)
 end
 
 DotnetNeotestAdapter.is_test_file = function(file_path)
-  if not (vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs")) then
-    return false
-  else
-    for _, test in pairs(vstest.discover_tests(file_path)) do
-      if test.CodeFilePath == file_path then
-        return true
-      end
-    end
-  end
-
-  return false
+  return (vim.endswith(file_path, ".cs") or vim.endswith(file_path, ".fs"))
+    and vstest.discover_tests(file_path)
 end
 
 DotnetNeotestAdapter.filter_dir = function(name)
@@ -40,6 +31,10 @@ local function get_match_type(captured_nodes)
   end
 end
 
+---@param source string
+---@param captured_nodes any
+---@param tests_in_file table<string, TestCase>
+---@param path string
 ---@return nil | neotest.Position | neotest.Position[]
 local function build_position(source, captured_nodes, tests_in_file, path)
   local match_type = get_match_type(captured_nodes)
@@ -49,12 +44,12 @@ local function build_position(source, captured_nodes, tests_in_file, path)
     local positions = {}
 
     if match_type == "test" then
-      for _, test in ipairs(tests_in_file) do
+      for id, test in pairs(tests_in_file) do
         if
           definition:start() <= test.LineNumber - 1 and test.LineNumber - 1 <= definition:end_()
         then
           table.insert(positions, {
-            id = test.Id,
+            id = id,
             type = match_type,
             path = path,
             name = test.DisplayName,
@@ -84,20 +79,11 @@ DotnetNeotestAdapter.discover_positions = function(path)
 
   local filetype = (vim.endswith(path, ".fs") and "fsharp") or "c_sharp"
 
-  local tests_in_file = vim
-    .iter(vstest.discover_tests(path))
-    :map(function(_, v)
-      return v
-    end)
-    :filter(function(test)
-      return test.CodeFilePath == path
-    end)
-    :totable()
+  local tests_in_file = vstest.discover_tests(path)
 
-  ---@type neotest.Tree?
   local tree
 
-  if #tests_in_file > 0 then
+  if tests_in_file then
     local content = lib.files.read(path)
     local lang = vim.treesitter.language.get_lang(filetype) or filetype
     nio.scheduler()

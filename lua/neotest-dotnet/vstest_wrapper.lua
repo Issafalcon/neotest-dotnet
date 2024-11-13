@@ -152,16 +152,15 @@ local discovery_cache = {}
 local build_semaphore = nio.control.semaphore(1)
 
 ---@class TestCase
----@field Id string
 ---@field CodeFilePath string
 ---@field DisplayName string
 ---@field FullyQualifiedName string
----@field Source string
+---@field LineNumber integer
 
 ---@param path string
----@return table<string, TestCase> test_cases
+---@return table<string, TestCase> | nil test_cases map from id -> test case
 function M.discover_tests(path)
-  local json = {}
+  local json
   local proj_info = M.get_proj_info(path)
 
   if not proj_info.dll_file then
@@ -185,7 +184,7 @@ function M.discover_tests(path)
     and modified_time
     and modified_time <= cached.last_modified
   then
-    return cached.content
+    return cached.content and cached.content[path]
   end
 
   local wait_file = nio.fn.tempname()
@@ -208,15 +207,15 @@ function M.discover_tests(path)
 
   logger.debug(string.format("Waiting for result file to populate for %s...", proj_info.proj_file))
 
-  local max_wait = 30 * 1000 -- 10 sec
+  local max_wait = 30 * 1000 -- 30 sec
 
   local done = M.spin_lock_wait_file(wait_file, max_wait)
   if done then
     local content = M.spin_lock_wait_file(output_file, max_wait)
 
-    json = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
-
     logger.debug("file has been populated. Extracting test cases")
+
+    json = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
 
     discovery_cache[proj_info.dll_file] = {
       last_modified = modified_time,
@@ -224,7 +223,7 @@ function M.discover_tests(path)
     }
   end
 
-  return json
+  return json and json[path]
 end
 
 ---runs tests identified by ids.

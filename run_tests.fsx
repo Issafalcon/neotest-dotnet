@@ -63,6 +63,12 @@ module TestDiscovery =
         else
             ValueOption.None
 
+    type TestCaseDto =
+        { CodeFilePath: string
+          DisplayName: string
+          LineNumber: int
+          FullyQualifiedName: string }
+
     let discoveredTests = ConcurrentDictionary<string, TestCase seq>()
 
     type PlaygroundTestDiscoveryHandler(resultFilePath, waitFilePath) =
@@ -76,8 +82,16 @@ module TestDiscovery =
                 use testsWriter = new StreamWriter(resultFilePath, append = false)
 
                 discoveredTests
-                |> _.Values
-                |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
+                |> Seq.map (fun x ->
+                    (x.Key,
+                     x.Value
+                     |> Seq.map (fun testCase ->
+                         testCase.Id,
+                         { CodeFilePath = testCase.CodeFilePath
+                           DisplayName = testCase.DisplayName
+                           LineNumber = testCase.LineNumber
+                           FullyQualifiedName = testCase.FullyQualifiedName })
+                     |> Map))
                 |> Map
                 |> JsonConvert.SerializeObject
                 |> testsWriter.WriteLine
