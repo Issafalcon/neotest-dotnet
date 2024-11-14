@@ -150,9 +150,21 @@ DotnetNeotestAdapter.build_spec = function(args)
 
   local pos = args.tree:data()
 
+  local ids = {}
+
   if pos.type ~= "test" then
-    return
+    ids = {}
+    for _, position in tree:iter() do
+      if position.type == "test" then
+        ids[#ids + 1] = position.id
+      end
+    end
+  else
+    ids = { pos.id }
   end
+
+  logger.debug("ids:")
+  logger.debug(ids)
 
   local results_path = nio.fn.tempname()
   local stream_path = nio.fn.tempname()
@@ -189,12 +201,10 @@ DotnetNeotestAdapter.build_spec = function(args)
   end
 
   return {
-    command = vstest.run_tests(pos.id, stream_path, results_path),
+    command = vstest.run_tests(ids, stream_path, results_path),
     context = {
       result_path = results_path,
       stop_stream = stop_stream,
-      file = pos.path,
-      id = pos.id,
     },
     stream = function()
       return function()
@@ -220,14 +230,6 @@ DotnetNeotestAdapter.results = function(spec)
   local results = {}
 
   if not success then
-    local outcome = "skipped"
-    results[spec.context.id] = {
-      status = outcome,
-      errors = {
-        message = "failed to read result file: " .. data,
-      },
-    }
-
     return results
   end
 

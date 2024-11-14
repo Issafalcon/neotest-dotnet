@@ -18,6 +18,7 @@ open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
 
 module TestDiscovery =
     open System.Collections.Concurrent
+    open System.Collections.Concurrent
 
     [<return: Struct>]
     let (|DiscoveryRequest|_|) (str: string) =
@@ -85,11 +86,14 @@ module TestDiscovery =
             member __.HandleRawMessage(_) = ()
 
     type PlaygroundTestRunHandler(streamOutputPath, outputFilePath) =
+        let resultsDictionary = ConcurrentDictionary()
+
         interface ITestRunEventsHandler with
             member _.HandleTestRunComplete
                 (_testRunCompleteArgs, _lastChunkArgs, _runContextAttachments, _executorUris)
                 =
-                ()
+                use outputWriter = new StreamWriter(outputFilePath, append = false)
+                outputWriter.WriteLine(JsonConvert.SerializeObject(resultsDictionary))
 
             member __.HandleLogMessage(_level, _message) = ()
 
@@ -130,15 +134,15 @@ module TestDiscovery =
                            short = $"{result.TestCase.DisplayName}:{outcome}"
                            errors = errors |})
 
+                for (id, result) in results do
+                    resultsDictionary.AddOrUpdate(id, result, (fun _ _ -> result)) |> ignore
+
                 use streamWriter = new StreamWriter(streamOutputPath, append = true)
 
                 for (id, result) in results do
                     {| id = id; result = result |}
                     |> JsonConvert.SerializeObject
                     |> streamWriter.WriteLine
-
-                use outputWriter = new StreamWriter(outputFilePath, append = false)
-                outputWriter.WriteLine(JsonConvert.SerializeObject(Map.ofSeq results))
 
             member __.LaunchProcessWithDebuggerAttached(_testProcessStartInfo) = 1
 
