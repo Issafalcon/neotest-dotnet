@@ -328,7 +328,7 @@ function M.run_tests(ids, stream_path, output_path)
   return string.format("tail -n 1 -f %s", output_path, output_path)
 end
 
----Uses the vstest console to spawn a test process for the debugger to attach to.
+--- Uses the vstest console to spawn a test process for the debugger to attach to.
 ---@param pid_path string
 ---@param attached_path string
 ---@param stream_path string

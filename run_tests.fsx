@@ -11,14 +11,13 @@ open System.Threading
 open System.Threading.Tasks
 open Newtonsoft.Json
 open System.Collections.Generic
+open System.Collections.Concurrent
 open Microsoft.TestPlatform.VsTestConsole.TranslationLayer
 open Microsoft.VisualStudio.TestPlatform.ObjectModel
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
 
 module TestDiscovery =
-    open System.Collections.Concurrent
-    open System.Collections.Concurrent
 
     [<return: Struct>]
     let (|DiscoveryRequest|_|) (str: string) =
