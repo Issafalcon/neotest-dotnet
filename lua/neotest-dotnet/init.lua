@@ -152,15 +152,10 @@ DotnetNeotestAdapter.build_spec = function(args)
 
   local ids = {}
 
-  if pos.type ~= "test" then
-    ids = {}
-    for _, position in tree:iter() do
-      if position.type == "test" then
-        ids[#ids + 1] = position.id
-      end
+  for _, position in tree:iter() do
+    if position.type == "test" then
+      ids[#ids + 1] = position.id
     end
-  else
-    ids = { pos.id }
   end
 
   logger.debug("ids:")

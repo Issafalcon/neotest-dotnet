@@ -43,7 +43,7 @@ module TestDiscovery =
 
             {| StreamPath = args[0]
                OutputPath = args[1]
-               Ids = args[3..] |> Array.map Guid.Parse |}
+               Ids = args[2..] |> Array.map Guid.Parse |}
             |> ValueOption.Some
         else
             ValueOption.None
@@ -64,6 +64,12 @@ module TestDiscovery =
         else
             ValueOption.None
 
+    let logHandler (level: TestMessageLevel) (message: string) =
+        if level = TestMessageLevel.Error then
+            Console.Error.WriteLine(message)
+        else
+            Console.WriteLine(message)
+
     type TestCaseDto =
         { CodeFilePath: string
           DisplayName: string
@@ -82,11 +88,7 @@ module TestDiscovery =
 
             member _.HandleDiscoveryComplete(_, _) = ()
 
-            member __.HandleLogMessage(level, message) =
-                if level = TestMessageLevel.Error then
-                    Console.Error.WriteLine(message)
-                else
-                    Console.WriteLine(message)
+            member __.HandleLogMessage(level, message) = logHandler level message
 
             member __.HandleRawMessage(_) = ()
 
@@ -100,7 +102,7 @@ module TestDiscovery =
                 use outputWriter = new StreamWriter(outputFilePath, append = false)
                 outputWriter.WriteLine(JsonConvert.SerializeObject(resultsDictionary))
 
-            member __.HandleLogMessage(_level, _message) = ()
+            member __.HandleLogMessage(level, message) = logHandler level message
 
             member __.HandleRawMessage(_rawMessage) = ()
 
