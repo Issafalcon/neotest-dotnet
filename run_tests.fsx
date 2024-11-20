@@ -16,6 +16,7 @@ open Microsoft.TestPlatform.VsTestConsole.TranslationLayer
 open Microsoft.VisualStudio.TestPlatform.ObjectModel
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
+open Microsoft.VisualStudio.TestPlatform.ObjectModel.Logging
 
 module TestDiscovery =
 
@@ -42,7 +43,7 @@ module TestDiscovery =
 
             {| StreamPath = args[0]
                OutputPath = args[1]
-               Ids = args[2..] |> Array.map Guid.Parse |}
+               Ids = args[3..] |> Array.map Guid.Parse |}
             |> ValueOption.Some
         else
             ValueOption.None
@@ -79,9 +80,14 @@ module TestDiscovery =
                 |> Seq.iter (fun (file, testCases) ->
                     discoveredTests.AddOrUpdate(file, testCases, (fun _ _ -> testCases)) |> ignore)
 
-
             member _.HandleDiscoveryComplete(_, _) = ()
-            member __.HandleLogMessage(_, _) = ()
+
+            member __.HandleLogMessage(level, message) =
+                if level = TestMessageLevel.Error then
+                    Console.Error.WriteLine(message)
+                else
+                    Console.WriteLine(message)
+
             member __.HandleRawMessage(_) = ()
 
     type PlaygroundTestRunHandler(streamOutputPath, outputFilePath) =
@@ -193,6 +199,7 @@ module TestDiscovery =
             |> Map.add "VSTEST_RUNNER_DEBUG_ATTACHVS" "0"
             |> Map.add "VSTEST_HOST_DEBUG_ATTACHVS" "0"
             |> Map.add "VSTEST_DATACOLLECTOR_DEBUG_ATTACHVS" "0"
+            |> Map.add "DOTNET_ROLL_FORWARD" "Major"
             |> Dictionary
 
         let options = TestPlatformOptions(CollectMetrics = false)
@@ -213,26 +220,31 @@ module TestDiscovery =
                 task {
                     do! Task.Yield()
 
-                    let discoveryHandler =
-                        PlaygroundTestDiscoveryHandler() :> ITestDiscoveryEventsHandler2
+                    try
+                        let discoveryHandler =
+                            PlaygroundTestDiscoveryHandler() :> ITestDiscoveryEventsHandler2
 
-                    r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
-                    use testsWriter = new StreamWriter(args.OutputPath, append = false)
+                        for source in args.Sources do
+                            r.DiscoverTests([| source |], sourceSettings, options, testSession, discoveryHandler)
 
-                    discoveredTests
-                    |> Seq.map (fun x ->
-                        (x.Key,
-                         x.Value
-                         |> Seq.map (fun testCase ->
-                             testCase.Id,
-                             { CodeFilePath = testCase.CodeFilePath
-                               DisplayName = testCase.DisplayName
-                               LineNumber = testCase.LineNumber
-                               FullyQualifiedName = testCase.FullyQualifiedName })
-                         |> Map))
-                    |> Map
-                    |> JsonConvert.SerializeObject
-                    |> testsWriter.WriteLine
+                        use testsWriter = new StreamWriter(args.OutputPath, append = false)
+
+                        discoveredTests
+                        |> Seq.map (fun x ->
+                            (x.Key,
+                             x.Value
+                             |> Seq.map (fun testCase ->
+                                 testCase.Id,
+                                 { CodeFilePath = testCase.CodeFilePath
+                                   DisplayName = testCase.DisplayName
+                                   LineNumber = testCase.LineNumber
+                                   FullyQualifiedName = testCase.FullyQualifiedName })
+                             |> Map))
+                        |> Map
+                        |> JsonConvert.SerializeObject
+                        |> testsWriter.WriteLine
+                    with e ->
+                        Console.WriteLine($"failed to discovery tests for {args.Sources}. Exception: {e}")
 
                     use waitFileWriter = new StreamWriter(args.WaitFile, append = false)
                     waitFileWriter.WriteLine("1")
