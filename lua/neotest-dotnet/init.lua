@@ -105,6 +105,9 @@ DotnetNeotestAdapter.discover_positions = function(path)
         range = { root:range() },
       },
     }
+    -- TODO: invert logic so we loop test in tests_in_file rather than treesitter nodes.
+    -- tests_in_file is our source of truth of test cases.
+    -- the treesitter nodes are there to get the correct range for the test case.
     for _, match in query:iter_matches(root, content, nil, nil, { all = false }) do
       local captured_nodes = {}
       for i, capture in ipairs(query.captures) do

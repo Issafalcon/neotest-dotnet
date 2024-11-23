@@ -19,13 +19,14 @@ open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Logging
 
 module TestDiscovery =
+    let parseArgs (args: string) =
+        args.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
+        |> Array.tail
 
     [<return: Struct>]
     let (|DiscoveryRequest|_|) (str: string) =
         if str.StartsWith("discover") then
-            let args =
-                str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
-                |> Array.tail
+            let args = parseArgs str
 
             {| OutputPath = args[0]
                WaitFile = args[1]
@@ -37,9 +38,7 @@ module TestDiscovery =
     [<return: Struct>]
     let (|RunTests|_|) (str: string) =
         if str.StartsWith("run-tests") then
-            let args =
-                str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
-                |> Array.tail
+            let args = parseArgs str
 
             {| StreamPath = args[0]
                OutputPath = args[1]
@@ -51,9 +50,7 @@ module TestDiscovery =
     [<return: Struct>]
     let (|DebugTests|_|) (str: string) =
         if str.StartsWith("debug-tests") then
-            let args =
-                str.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
-                |> Array.tail
+            let args = parseArgs str
 
             {| PidPath = args[0]
                AttachedPath = args[1]
@@ -77,6 +74,15 @@ module TestDiscovery =
           FullyQualifiedName: string }
 
     let discoveredTests = ConcurrentDictionary<string, TestCase seq>()
+
+    let getTestCases ids =
+        let idMap =
+            discoveredTests
+            |> _.Values
+            |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
+            |> Map
+
+        ids |> Array.choose (fun id -> Map.tryFind id idMap)
 
     type PlaygroundTestDiscoveryHandler() =
         interface ITestDiscoveryEventsHandler2 with
@@ -111,9 +117,6 @@ module TestDiscovery =
                     match outcome with
                     | TestOutcome.Passed -> "passed"
                     | TestOutcome.Failed -> "failed"
-                    | TestOutcome.Skipped -> "skipped"
-                    | TestOutcome.None -> "skipped"
-                    | TestOutcome.NotFound -> "skipped"
                     | _ -> "skipped"
 
                 let results =
@@ -218,7 +221,7 @@ module TestDiscovery =
         while loop do
             match Console.ReadLine() with
             | DiscoveryRequest args ->
-                // spawn as task to allow running discovery
+                // spawn as task to allow running discovery concurrently
                 task {
                     do! Task.Yield()
 
@@ -255,26 +258,14 @@ module TestDiscovery =
                 }
                 |> ignore
             | RunTests args ->
-                let idMap =
-                    discoveredTests
-                    |> _.Values
-                    |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
-                    |> Map
-
-                let testCases = args.Ids |> Array.choose (fun id -> Map.tryFind id idMap)
+                let testCases = getTestCases args.Ids
 
                 let testHandler = PlaygroundTestRunHandler(args.StreamPath, args.OutputPath)
                 // spawn as task to allow running concurrent tests
                 r.RunTestsAsync(testCases, sourceSettings, testHandler) |> ignore
                 ()
             | DebugTests args ->
-                let idMap =
-                    discoveredTests
-                    |> _.Values
-                    |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
-                    |> Map
-
-                let testCases = args.Ids |> Array.choose (fun id -> Map.tryFind id idMap)
+                let testCases = getTestCases args.Ids
 
                 let testHandler = PlaygroundTestRunHandler(args.StreamPath, args.OutputPath)
                 let debugLauncher = DebugLauncher(args.PidPath, args.AttachedPath)
