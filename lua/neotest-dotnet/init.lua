@@ -56,6 +56,7 @@ local function build_position(source, captured_nodes, tests_in_file, path)
             qualified_name = test.FullyQualifiedName,
             range = { definition:range() },
           })
+          tests_in_file[id] = nil
         end
       end
     else
@@ -87,6 +88,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
     local content = lib.files.read(path)
     local lang = vim.treesitter.language.get_lang(filetype) or filetype
     nio.scheduler()
+    tests_in_file = vim.fn.deepcopy(tests_in_file)
     local lang_tree =
       vim.treesitter.get_string_parser(content, lang, { injections = { [lang] = "" } })
 
@@ -105,9 +107,6 @@ DotnetNeotestAdapter.discover_positions = function(path)
         range = { root:range() },
       },
     }
-    -- TODO: invert logic so we loop test in tests_in_file rather than treesitter nodes.
-    -- tests_in_file is our source of truth of test cases.
-    -- the treesitter nodes are there to get the correct range for the test case.
     for _, match in query:iter_matches(root, content, nil, nil, { all = false }) do
       local captured_nodes = {}
       for i, capture in ipairs(query.captures) do
@@ -176,7 +175,7 @@ DotnetNeotestAdapter.build_spec = function(args)
     local pid_path = nio.fn.tempname()
     local attached_path = nio.fn.tempname()
 
-    local pid = vstest.debug_tests(pid_path, attached_path, stream_path, results_path, pos.id)
+    local pid = vstest.debug_tests(pid_path, attached_path, stream_path, results_path, ids)
     --- @type Configuration
     strategy = {
       type = "netcoredbg",
@@ -191,6 +190,7 @@ DotnetNeotestAdapter.build_spec = function(args)
         local dap = require("dap")
         dap.listeners.after.configurationDone["neotest-dotnet"] = function()
           nio.run(function()
+            logger.debug("attached to debug test runner")
             lib.files.write(attached_path, "1")
           end)
         end
@@ -199,7 +199,7 @@ DotnetNeotestAdapter.build_spec = function(args)
   end
 
   return {
-    command = vstest.run_tests(ids, stream_path, results_path),
+    command = vstest.run_tests(args.strategy == "dap", ids, stream_path, results_path),
     context = {
       result_path = results_path,
       stop_stream = stop_stream,

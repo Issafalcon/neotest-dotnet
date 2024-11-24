@@ -180,7 +180,11 @@ module TestDiscovery =
                 while not (cts.Token.IsCancellationRequested || File.Exists(attachedFile)) do
                     ()
 
-                File.Exists(attachedFile)
+                let attached = File.Exists(attachedFile)
+
+                Console.WriteLine($"Debugger attached: {attached}")
+
+                attached
 
             member __.IsDebug = true
 

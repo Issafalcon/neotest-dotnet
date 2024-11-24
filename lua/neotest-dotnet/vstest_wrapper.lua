@@ -307,23 +307,26 @@ function M.discover_tests(path)
 end
 
 ---runs tests identified by ids.
+---@param dap boolean true if normal test runner should be skipped
 ---@param ids string|string[]
 ---@param stream_path string
 ---@param output_path string
 ---@return string command
-function M.run_tests(ids, stream_path, output_path)
-  lib.process.run({ "dotnet", "build" })
+function M.run_tests(dap, ids, stream_path, output_path)
+  if not dap then
+    lib.process.run({ "dotnet", "build" })
 
-  local command = vim
-    .iter({
-      "run-tests",
-      stream_path,
-      output_path,
-      ids,
-    })
-    :flatten()
-    :join(" ")
-  invoke_test_runner(command)
+    local command = vim
+      .iter({
+        "run-tests",
+        stream_path,
+        output_path,
+        ids,
+      })
+      :flatten()
+      :join(" ")
+    invoke_test_runner(command)
+  end
 
   return string.format("tail -n 1 -f %s", output_path, output_path)
 end
