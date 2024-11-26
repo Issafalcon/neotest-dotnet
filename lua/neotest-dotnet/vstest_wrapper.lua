@@ -308,11 +308,11 @@ end
 
 ---runs tests identified by ids.
 ---@param dap boolean true if normal test runner should be skipped
----@param ids string|string[]
 ---@param stream_path string
 ---@param output_path string
+---@param ids string|string[]
 ---@return string command
-function M.run_tests(dap, ids, stream_path, output_path)
+function M.run_tests(dap, stream_path, output_path, ids)
   if not dap then
     lib.process.run({ "dotnet", "build" })
 
@@ -332,14 +332,15 @@ function M.run_tests(dap, ids, stream_path, output_path)
 end
 
 --- Uses the vstest console to spawn a test process for the debugger to attach to.
----@param pid_path string
 ---@param attached_path string
 ---@param stream_path string
 ---@param output_path string
 ---@param ids string|string[]
 ---@return string? pid
-function M.debug_tests(pid_path, attached_path, stream_path, output_path, ids)
+function M.debug_tests(attached_path, stream_path, output_path, ids)
   lib.process.run({ "dotnet", "build" })
+
+  local pid_path = nio.fn.tempname()
 
   local command = vim
     .iter({
