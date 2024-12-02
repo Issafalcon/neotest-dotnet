@@ -75,9 +75,6 @@ end
 DotnetNeotestAdapter.discover_positions = function(path)
   logger.info(string.format("scanning %s for tests...", path))
 
-  local fsharp_query = require("neotest-dotnet.queries.fsharp")
-  local c_sharp_query = require("neotest-dotnet.queries.c_sharp")
-
   local filetype = (vim.endswith(path, ".fs") and "fsharp") or "c_sharp"
 
   local tests_in_file = vstest.discover_tests(path)
@@ -94,8 +91,11 @@ DotnetNeotestAdapter.discover_positions = function(path)
 
     local root = lib.treesitter.fast_parse(lang_tree):root()
 
-    local query =
-      lib.treesitter.normalise_query(lang, filetype == "fsharp" and fsharp_query or c_sharp_query)
+    local query = lib.treesitter.normalise_query(
+      lang,
+      filetype == "fsharp" and require("neotest-dotnet.queries.fsharp")
+        or require("neotest-dotnet.queries.c_sharp")
+    )
 
     local sep = lib.files.sep
     local path_elems = vim.split(path, sep, { plain = true })

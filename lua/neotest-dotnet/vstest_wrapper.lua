@@ -34,6 +34,8 @@ end
 
 local function get_script(script_name)
   local script_paths = vim.api.nvim_get_runtime_file(script_name, true)
+  logger.debug("possible scripts:")
+  logger.debug(script_paths)
   for _, path in ipairs(script_paths) do
     if vim.endswith(path, ("neotest-dotnet%s" .. script_name):format(lib.files.sep)) then
       return path
@@ -41,16 +43,10 @@ local function get_script(script_name)
   end
 end
 
-local proj_file_path_map = {}
-
 ---collects project information based on file
 ---@param path string
 ---@return { proj_file: string, dll_file: string, proj_dir: string }
 function M.get_proj_info(path)
-  if proj_file_path_map[path] then
-    return proj_file_path_map[path]
-  end
-
   local proj_file = vim.fs.find(function(name, _)
     return name:match("%.[cf]sproj$")
   end, { upward = true, type = "file", path = vim.fs.dirname(path) })[1]
@@ -70,7 +66,6 @@ function M.get_proj_info(path)
     proj_dir = dir_name,
   }
 
-  proj_file_path_map[path] = proj_data
   return proj_data
 end
 
@@ -83,8 +78,11 @@ local function invoke_test_runner(command)
       return
     end
 
-    local test_discovery_script = get_script("run_tests.fsx")
+    local test_discovery_script = get_script("scripts/run_tests.fsx")
     local testhost_dll = get_vstest_path()
+
+    logger.debug("found discovery script: " .. test_discovery_script)
+    logger.debug("found testhost dll: " .. testhost_dll)
 
     local vstest_command = { "dotnet", "fsi", test_discovery_script, testhost_dll }
 
@@ -94,8 +92,12 @@ local function invoke_test_runner(command)
     local process = vim.system(vstest_command, {
       stdin = true,
       stdout = function(err, data)
-        logger.trace(data)
-        logger.trace(err)
+        if data then
+          logger.trace(data)
+        end
+        if err then
+          logger.trace(err)
+        end
       end,
     }, function(obj)
       logger.warn("vstest process died :(")
@@ -165,7 +167,7 @@ function M.discover_tests(path)
   local json
   local proj_info = M.get_proj_info(path)
 
-  if not (proj_info.proj_file and proj_info.dll_file) then
+  if not proj_info.proj_file then
     logger.warn(string.format("failed to find project file for %s", path))
     return {}
   end
@@ -187,6 +189,13 @@ function M.discover_tests(path)
     )
     logger.debug(string.format("dotnet build status code: %s", exitCode))
     logger.debug(stdout)
+  end
+
+  proj_info = M.get_proj_info(path)
+
+  if not proj_info.dll_file then
+    logger.warn(string.format("failed to find project dll for %s", path))
+    return {}
   end
 
   local dll_open_err, dll_stats = nio.uv.fs_stat(proj_info.dll_file)
@@ -286,7 +295,7 @@ function M.discover_tests(path)
 
   logger.debug("Waiting for result file to populated...")
 
-  local max_wait = 30 * 1000 -- 30 sec
+  local max_wait = 60 * 1000 -- 60 sec
 
   local done = M.spin_lock_wait_file(wait_file, max_wait)
   if done then
