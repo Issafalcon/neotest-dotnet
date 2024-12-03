@@ -47,6 +47,11 @@ function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, dotn
     end
   end
 
+  if vim.g.neotest_dotnet_runsettings_path then
+    table.insert(command, "--settings")
+    table.insert(command, vim.g.neotest_dotnet_runsettings_path)
+  end
+
   local command_string = table.concat(command, " ")
 
   logger.debug("neotest-dotnet: Running tests using command: " .. command_string)
