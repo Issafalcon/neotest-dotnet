@@ -188,6 +188,49 @@ setmetatable(DotnetNeotestAdapter, {
     if type(opts.discovery_root) == "string" then
       discovery_root = opts.discovery_root
     end
+
+    local function find_runsettings_files()
+      local files = {}
+      for _, runsettingsFile in
+        ipairs(vim.fn.glob(vim.fn.getcwd() .. "**/*.runsettings", false, true))
+      do
+        table.insert(files, runsettingsFile)
+      end
+
+      for _, runsettingsFile in
+        ipairs(vim.fn.glob(vim.fn.getcwd() .. "**/.runsettings", false, true))
+      do
+        table.insert(files, runsettingsFile)
+      end
+
+      return files
+    end
+
+    local function select_runsettings_file()
+      local files = find_runsettings_files()
+      if #files == 0 then
+        print("No .runsettings files found")
+        vim.g.neotest_dotnet_runsettings_path = nil
+        return
+      end
+
+      vim.ui.select(files, {
+        prompt = "Select runsettings file:",
+        format_item = function(item)
+          return vim.fn.fnamemodify(item, ":p:.")
+        end,
+      }, function(choice)
+        if choice then
+          vim.g.neotest_dotnet_runsettings_path = choice
+          print("Selected runsettings file: " .. choice)
+        end
+      end)
+    end
+
+    vim.api.nvim_create_user_command("NeotestSelectRunsettingsFile", select_runsettings_file, {})
+    vim.api.nvim_create_user_command("NeotestClearRunsettings", function()
+      vim.g.neotest_dotnet_runsettings_path = nil
+    end, {})
     return DotnetNeotestAdapter
   end,
 })
