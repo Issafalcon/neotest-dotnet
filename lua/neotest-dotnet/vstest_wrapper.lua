@@ -13,27 +13,37 @@ local function get_vstest_path()
       args = { "--info" },
     })
 
-    if not process or errors then
-      if vim.fn.has("win32") then
-        M.sdk_path = "C:/Program Files/dotnet/sdk/"
-      else
-        M.sdk_path = "/usr/local/share/dotnet/sdk/"
-      end
+    local default_sdk_path
+    if vim.fn.has("win32") then
+      default_sdk_path = "C:/Program Files/dotnet/sdk/"
+    else
+      default_sdk_path = "/usr/local/share/dotnet/sdk/"
+    end
 
+    if not process or errors then
+      M.sdk_path = default_sdk_path
       local log_string = string.format("failed to detect sdk path. falling back to %s", M.sdk_path)
 
       vim.notify_once("neotest-dotnet: " .. log_string)
       logger.info(log_string)
     else
       local out = process.stdout.read()
-      M.sdk_path = out and out:match("Base Path:%s*(%S+)")
-      logger.info(string.format("detected sdk path: %s", M.sdk_path))
+      local match = out and out:match("Base Path:%s*(%S+)")
+      if match then
+        M.sdk_path = match
+        logger.info(string.format("detected sdk path: %s", M.sdk_path))
+      else
+        M.sdk_path = default_sdk_path
+        local log_string =
+          string.format("failed to detect sdk path. falling back to %s", M.sdk_path)
+        vim.notify_once("neotest-dotnet: " .. log_string)
+        logger.info(log_string)
+      end
       process.close()
     end
   end
 
   return vim.fs.find("vstest.console.dll", { upward = false, type = "file", path = M.sdk_path })[1]
-    or vim.fs.find("vstest.console.exe", { upward = false, type = "file", path = M.sdk_path })[1]
 end
 
 local function get_script(script_name)
@@ -135,13 +145,10 @@ function M.spin_lock_wait_file(file_path, max_wait)
   local file_exists = false
 
   while not file_exists and tries * sleep_time < max_wait do
-    if vim.fn.filereadable(file_path) == 1 then
+    if lib.files.exists(file_path) then
       spin_lock.with(function()
-        local file, open_err = nio.file.open(file_path)
-        assert(not open_err, open_err)
         file_exists = true
-        content = file.read()
-        file.close()
+        content = require("neotest.lib").files.read(file_path)
       end)
     else
       tries = tries + 1
