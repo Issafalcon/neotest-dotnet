@@ -20,7 +20,10 @@ local function get_vstest_path()
         M.sdk_path = "/usr/local/share/dotnet/sdk/"
       end
 
-      logger.info(string.format("failed to detect sdk path. falling back to %s", M.sdk_path))
+      local log_string = string.format("failed to detect sdk path. falling back to %s", M.sdk_path)
+
+      vim.notify_once("neotest-dotnet: " .. log_string)
+      logger.info(log_string)
     else
       local out = process.stdout.read()
       M.sdk_path = out and out:match("Base Path:%s*(%S+)")
@@ -30,6 +33,7 @@ local function get_vstest_path()
   end
 
   return vim.fs.find("vstest.console.dll", { upward = false, type = "file", path = M.sdk_path })[1]
+    or vim.fs.find("vstest.console.exe", { upward = false, type = "file", path = M.sdk_path })[1]
 end
 
 local function get_script(script_name)
