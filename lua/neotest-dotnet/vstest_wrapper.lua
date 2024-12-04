@@ -33,11 +33,11 @@ local function get_vstest_path()
 end
 
 local function get_script(script_name)
-  local script_paths = vim.api.nvim_get_runtime_file(script_name, true)
+  local script_paths = vim.api.nvim_get_runtime_file(vim.fs.joinpath("scripts", script_name), true)
   logger.debug("possible scripts:")
   logger.debug(script_paths)
   for _, path in ipairs(script_paths) do
-    if vim.endswith(path, ("neotest-dotnet%s" .. script_name):format(lib.files.sep)) then
+    if vim.endswith(path, vim.fs.joinpath("neotest-dotnet", "scripts", script_name)) then
       return path
     end
   end
@@ -78,7 +78,7 @@ local function invoke_test_runner(command)
       return
     end
 
-    local test_discovery_script = get_script("scripts/run_tests.fsx")
+    local test_discovery_script = get_script("run_tests.fsx")
     local testhost_dll = get_vstest_path()
 
     logger.debug("found discovery script: " .. test_discovery_script)
