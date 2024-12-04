@@ -37,7 +37,7 @@ local function get_script(script_name)
   logger.debug("possible scripts:")
   logger.debug(script_paths)
   for _, path in ipairs(script_paths) do
-    if vim.endswith(path, vim.fs.joinpath("neotest-dotnet", "scripts", script_name)) then
+    if path:match("neotest%-dotnet") ~= nil then
       return path
     end
   end
