@@ -98,6 +98,10 @@ M.post_process_tree_list = function(tree, path)
   local dotnet_tests = test_list_job.result().output
   local tree_as_list = tree:to_list()
 
+  local short_name_pat = "%.([%w_]+)$"
+  local short_name_only_pat = "%.([%w_]+)%(.*%)$"
+  local short_name_with_param_pat = "%.([%w_]+%(.*%))$"
+
   local function process_test_names(node_tree)
     for _, node in ipairs(node_tree) do
       if node.type == "test" then
@@ -127,10 +131,11 @@ M.post_process_tree_list = function(tree, path)
           for j, matched_name in ipairs(matched_tests) do
             local sub_id = path .. "::" .. string.gsub(matched_name, "%.", "::")
             local sub_test = {}
+            local short_name = string.match(matched_name, short_name_with_param_pat)
             local sub_node = {
               id = sub_id,
               is_class = false,
-              name = matched_name,
+              name = short_name,
               path = path,
               range = {
                 parent_node_ranges[1] + j,
@@ -146,8 +151,9 @@ M.post_process_tree_list = function(tree, path)
             table.insert(node_tree, sub_test)
           end
 
+          local short_name = string.match(matched_tests[1], short_name_only_pat)
           node_tree[1] = vim.tbl_extend("force", node, {
-            name = matched_tests[1]:gsub("%b()", ""),
+            name = short_name,
             framework = "xunit",
             running_id = running_id,
           })
@@ -156,10 +162,11 @@ M.post_process_tree_list = function(tree, path)
           logger.debug(node_tree)
         elseif #matched_tests == 1 then
           logger.debug("testing: matched one test with name: " .. matched_tests[1])
+          local short_name = string.match(matched_tests[1], short_name_pat)
           node_tree[1] = vim.tbl_extend(
             "force",
             node,
-            { name = matched_tests[1], framework = "xunit", running_id = running_id }
+            { name = short_name, framework = "xunit", running_id = running_id }
           )
         end
       end
