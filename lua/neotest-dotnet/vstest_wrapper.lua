@@ -28,9 +28,9 @@ local function get_vstest_path()
       logger.info(log_string)
     else
       local out = process.stdout.read()
-      local match = out and out:match("Base Path:%s*(%S+)")
+      local match = out and out:match("Base Path:%s*(%S+[^\n]*)")
       if match then
-        M.sdk_path = match
+        M.sdk_path = vim.trim(match)
         logger.info(string.format("detected sdk path: %s", M.sdk_path))
       else
         M.sdk_path = default_sdk_path
