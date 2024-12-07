@@ -1,0 +1,20 @@
+describe("Test root detection", function()
+  it("Detect .sln file as root", function()
+    local plugin = require("neotest-dotnet")
+    local dir = vim.fn.getcwd() .. "/spec/samples/test_solution"
+    local root = plugin.root(dir)
+    assert.are_equal(dir, root)
+  end)
+  it("Detect .sln file as root from project dir", function()
+    local plugin = require("neotest-dotnet")
+    local dir = vim.fn.getcwd() .. "/spec/samples/test_solution"
+    local root = plugin.root(dir .. "/src/FsharpTest")
+    assert.are_equal(dir, root)
+  end)
+  it("Detect .fsproj file as root from project dir with no .sln file", function()
+    local plugin = require("neotest-dotnet")
+    local dir = vim.fn.getcwd() .. "/spec/samples/test_project"
+    local root = plugin.root(dir)
+    assert.are_equal(dir, root)
+  end)
+end)

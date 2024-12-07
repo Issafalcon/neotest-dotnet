@@ -42,3 +42,9 @@ luac.out
 # Test dependencies
 deps/
 **/obj/*
+/luarocks
+/lua_modules
+/.luarocks
+
+obj/
+bin/
