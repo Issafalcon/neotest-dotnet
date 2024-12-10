@@ -93,78 +93,82 @@ end
 ---@param tree neotest.Tree The tree to modify
 ---@param path string The path to the file the tree was built from
 M.post_process_tree_list = function(tree, path)
-  local proj_root = lib.files.match_root_pattern("*.csproj")(path)
+  local proj_root = lib.files.match_root_pattern("*.sln")(path)
   local test_list_job = DotnetUtils.get_test_full_names(proj_root)
   local dotnet_tests = test_list_job.result().output
   local tree_as_list = tree:to_list()
 
   local function process_test_names(node_tree)
-    for _, node in ipairs(node_tree) do
-      if node.type == "test" then
-        local matched_tests = {}
-        local node_test_name = node.name
-        local running_id = node.id
+    local stack = { node_tree }
 
-        -- If node.display_name is not nil, use it to match the test name
-        if node.display_name ~= nil then
-          node_test_name = node.display_name
-        else
-          node_test_name = NodeTreeUtils.get_qualified_test_name_from_id(node.id)
-        end
+    while #stack > 0 do
+      local current_node_tree = table.remove(stack)
+      for _, node in ipairs(current_node_tree) do
+        if node.type == "test" then
+          local matched_tests = {}
+          local node_test_name = node.name
+          local running_id = node.id
 
-        logger.debug("neotest-dotnet: Processing test name: " .. node_test_name)
-
-        for _, dotnet_name in ipairs(dotnet_tests) do
-          -- First remove parameters from test name so we just match the "base" test name
-          if string.find(dotnet_name:gsub("%b()", ""), node_test_name, 0, true) then
-            table.insert(matched_tests, dotnet_name)
+          if node.display_name ~= nil then
+            node_test_name = node.display_name
+          else
+            node_test_name = NodeTreeUtils.get_qualified_test_name_from_id(node.id)
           end
-        end
 
-        if #matched_tests > 1 then
-          -- This is a parameterized test (multiple matches for the same test)
-          local parent_node_ranges = node.range
-          for j, matched_name in ipairs(matched_tests) do
-            local sub_id = path .. "::" .. string.gsub(matched_name, "%.", "::")
-            local sub_test = {}
-            local sub_node = {
-              id = sub_id,
-              is_class = false,
-              name = matched_name,
-              path = path,
-              range = {
-                parent_node_ranges[1] + j,
-                parent_node_ranges[2],
-                parent_node_ranges[1] + j,
-                parent_node_ranges[4],
-              },
-              type = "test",
+          logger.debug("neotest-dotnet: Processing test name: " .. node_test_name)
+
+          for _, dotnet_name in ipairs(dotnet_tests) do
+            if string.find(dotnet_name:gsub("%b()", ""), node_test_name, 0, true) then
+              table.insert(matched_tests, dotnet_name)
+            end
+          end
+
+          if #matched_tests > 1 then
+            local parent_node_ranges = node.range
+            for j, matched_name in ipairs(matched_tests) do
+              local sub_id = path .. "::" .. string.gsub(matched_name, "%.", "::")
+              local sub_test = {}
+              local sub_node = {
+                id = sub_id,
+                is_class = false,
+                name = matched_name,
+                path = path,
+                range = {
+                  parent_node_ranges[1] + j,
+                  parent_node_ranges[2],
+                  parent_node_ranges[1] + j,
+                  parent_node_ranges[4],
+                },
+                type = "test",
+                framework = "xunit",
+                running_id = running_id,
+              }
+              table.insert(sub_test, sub_node)
+              table.insert(current_node_tree, sub_test)
+            end
+
+            current_node_tree[1] = vim.tbl_extend("force", node, {
+              name = matched_tests[1]:gsub("%b()", ""),
               framework = "xunit",
               running_id = running_id,
-            }
-            table.insert(sub_test, sub_node)
-            table.insert(node_tree, sub_test)
+            })
+
+            logger.debug("testing: node_tree after parameterized tests: ")
+            logger.debug(current_node_tree)
+          elseif #matched_tests == 1 then
+            logger.debug("testing: matched one test with name: " .. matched_tests[1])
+            current_node_tree[1] = vim.tbl_extend(
+              "force",
+              node,
+              { name = matched_tests[1], framework = "xunit", running_id = running_id }
+            )
           end
+        end
 
-          node_tree[1] = vim.tbl_extend("force", node, {
-            name = matched_tests[1]:gsub("%b()", ""),
-            framework = "xunit",
-            running_id = running_id,
-          })
-
-          logger.debug("testing: node_tree after parameterized tests: ")
-          logger.debug(node_tree)
-        elseif #matched_tests == 1 then
-          logger.debug("testing: matched one test with name: " .. matched_tests[1])
-          node_tree[1] = vim.tbl_extend(
-            "force",
-            node,
-            { name = matched_tests[1], framework = "xunit", running_id = running_id }
-          )
+        if node.children then
+          table.insert(stack, node.children)
         end
       end
-
-      process_test_names(node)
     end
   end
 
