@@ -90,6 +90,19 @@ require("neotest").setup({
 })
 ```
 
+## Using `.runsettings` files
+
+The plugin provides commands to select and clear the runsettings files (if any are available in the Neovim working director tree).
+
+To select the runsettings file in a Neovim session run:
+`:NeotestSelectRunsettingsFile`
+
+- This will apply the runsettings to all tests run via the neotest-adapter
+
+To clear the runsettings file in the same session run:
+`:NeotestClearRunsettings`
+
+
 ## Additional `dotnet test` arguments
 
 As well as the `dotnet_additional_args` option in the adapter setup above, you may also provide additional CLI arguments as a table to each `neotest` command.
