@@ -22,21 +22,22 @@ local function get_vstest_path()
 
     if not process or errors then
       M.sdk_path = default_sdk_path
-      local log_string = string.format("failed to detect sdk path. falling back to %s", M.sdk_path)
+      local log_string =
+        string.format("neotest-dotnet: failed to detect sdk path. falling back to %s", M.sdk_path)
 
-      vim.notify_once("neotest-dotnet: " .. log_string)
+      vim.notify_once(log_string)
       logger.info(log_string)
     else
       local out = process.stdout.read()
       local match = out and out:match("Base Path:%s*(%S+[^\n]*)")
       if match then
         M.sdk_path = vim.trim(match)
-        logger.info(string.format("detected sdk path: %s", M.sdk_path))
+        logger.info(string.format("neotest-dotnet: detected sdk path: %s", M.sdk_path))
       else
         M.sdk_path = default_sdk_path
         local log_string =
-          string.format("failed to detect sdk path. falling back to %s", M.sdk_path)
-        vim.notify_once("neotest-dotnet: " .. log_string)
+          string.format("neotest-dotnet: failed to detect sdk path. falling back to %s", M.sdk_path)
+        vim.notify_once(log_string)
         logger.info(log_string)
       end
       process.close()
@@ -48,7 +49,7 @@ end
 
 local function get_script(script_name)
   local script_paths = vim.api.nvim_get_runtime_file(vim.fs.joinpath("scripts", script_name), true)
-  logger.debug("possible scripts:")
+  logger.debug("neotest-dotnet: possible scripts:")
   logger.debug(script_paths)
   for _, path in ipairs(script_paths) do
     if path:match("neotest%-dotnet") ~= nil then
@@ -95,33 +96,33 @@ local function invoke_test_runner(command)
     local test_discovery_script = get_script("run_tests.fsx")
     local testhost_dll = get_vstest_path()
 
-    logger.debug("found discovery script: " .. test_discovery_script)
-    logger.debug("found testhost dll: " .. testhost_dll)
+    logger.debug("neotest-dotnet: found discovery script: " .. test_discovery_script)
+    logger.debug("neotest-dotnet: found testhost dll: " .. testhost_dll)
 
     local vstest_command = { "dotnet", "fsi", test_discovery_script, testhost_dll }
 
-    logger.info("starting vstest console with:")
+    logger.info("neotest-dotnet: starting vstest console with:")
     logger.info(vstest_command)
 
     local process = vim.system(vstest_command, {
       stdin = true,
       stdout = function(err, data)
         if data then
-          logger.trace(data)
+          logger.trace("neotest-dotnet: " .. data)
         end
         if err then
-          logger.trace(err)
+          logger.trace("neotest-dotnet " .. err)
         end
       end,
     }, function(obj)
-      logger.warn("vstest process died :(")
+      logger.warn("neotest-dotnet: vstest process died :(")
       logger.warn(obj.code)
       logger.warn(obj.signal)
       logger.warn(obj.stdout)
       logger.warn(obj.stderr)
     end)
 
-    logger.info(string.format("spawned vstest process with pid: %s", process.pid))
+    logger.info(string.format("neotest-dotnet: spawned vstest process with pid: %s", process.pid))
 
     test_runner = function(content)
       process:write(content .. "\n")
@@ -157,7 +158,7 @@ function M.spin_lock_wait_file(file_path, max_wait)
   end
 
   if not content then
-    logger.warn(string.format("timed out reading content of file %s", file_path))
+    logger.warn(string.format("neotest-dotnet: timed out reading content of file %s", file_path))
   end
 
   return content
@@ -179,7 +180,7 @@ function M.discover_tests(path)
   local proj_info = M.get_proj_info(path)
 
   if not proj_info.proj_file then
-    logger.warn(string.format("failed to find project file for %s", path))
+    logger.warn(string.format("neotest-dotnet: failed to find project file for %s", path))
     return {}
   end
 
@@ -198,14 +199,14 @@ function M.discover_tests(path)
       { "dotnet", "build", proj_info.proj_file },
       { stdout = true, stderr = true }
     )
-    logger.debug(string.format("dotnet build status code: %s", exitCode))
+    logger.debug(string.format("neotest-dotnet: dotnet build status code: %s", exitCode))
     logger.debug(stdout)
   end
 
   proj_info = M.get_proj_info(path)
 
   if not proj_info.dll_file then
-    logger.warn(string.format("failed to find project dll for %s", path))
+    logger.warn(string.format("neotest-dotnet: failed to find project dll for %s", path))
     return {}
   end
 
@@ -221,7 +222,7 @@ function M.discover_tests(path)
   then
     logger.debug(
       string.format(
-        "cache hit for %s. %s - %s",
+        "neotest-dotnet: cache hit for %s. %s - %s",
         proj_info.proj_file,
         path_modified_time,
         last_discovery[proj_info.proj_file]
@@ -231,7 +232,7 @@ function M.discover_tests(path)
   else
     logger.debug(
       string.format(
-        "cache miss for %s... path: %s cache: %s - %s",
+        "neotest-dotnet: cache miss for %s... path: %s cache: %s - %s",
         path,
         path_modified_time,
         proj_info.proj_file,
@@ -247,7 +248,7 @@ function M.discover_tests(path)
     local root = lib.files.match_root_pattern("*.sln")(path)
       or lib.files.match_root_pattern("*.[cf]sproj")(path)
 
-    logger.debug(string.format("root: %s", root))
+    logger.debug(string.format("neotest-dotnet: root: %s", root))
 
     local projects = vim.fs.find(function(name, _)
       return name:match("%.[cf]sproj$")
@@ -271,7 +272,7 @@ function M.discover_tests(path)
           and project_stats.mtime
           and project_stats.mtime.sec
       else
-        logger.warn(string.format("failed to find dll for %s", project))
+        logger.warn(string.format("neotest-dotnet: failed to find dll for %s", project))
       end
     end
   else
@@ -286,7 +287,7 @@ function M.discover_tests(path)
   local wait_file = nio.fn.tempname()
   local output_file = nio.fn.tempname()
 
-  logger.debug("found dlls:")
+  logger.debug("neotest-dotnet: found dlls:")
   logger.debug(dlls)
 
   local command = vim
@@ -299,12 +300,12 @@ function M.discover_tests(path)
     :flatten()
     :join(" ")
 
-  logger.debug("Discovering tests using:")
+  logger.debug("neotest-dotnet: Discovering tests using:")
   logger.debug(command)
 
   invoke_test_runner(command)
 
-  logger.debug("Waiting for result file to populated...")
+  logger.debug("neotest-dotnet: Waiting for result file to populated...")
 
   local max_wait = 60 * 1000 -- 60 sec
 
@@ -312,11 +313,11 @@ function M.discover_tests(path)
   if done then
     local content = M.spin_lock_wait_file(output_file, max_wait)
 
-    logger.debug("file has been populated. Extracting test cases...")
+    logger.debug("neotest-dotnet: file has been populated. Extracting test cases...")
 
     json = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
 
-    logger.debug("done decoding test cases.")
+    logger.debug("neotest-dotnet: done decoding test cases.")
 
     for file_path, test_map in pairs(json) do
       discovery_cache[file_path] = test_map
@@ -373,12 +374,12 @@ function M.debug_tests(attached_path, stream_path, output_path, ids)
     })
     :flatten()
     :join(" ")
-  logger.debug("starting test in debug mode using:")
+  logger.debug("neotest-dotnet: starting test in debug mode using:")
   logger.debug(command)
 
   invoke_test_runner(command)
 
-  logger.debug("Waiting for pid file to populate...")
+  logger.debug("neotest-dotnet: Waiting for pid file to populate...")
 
   local max_wait = 30 * 1000 -- 30 sec
 

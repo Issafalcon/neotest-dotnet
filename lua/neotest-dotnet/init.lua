@@ -73,7 +73,7 @@ local function build_position(source, captured_nodes, tests_in_file, path)
 end
 
 DotnetNeotestAdapter.discover_positions = function(path)
-  logger.info(string.format("scanning %s for tests...", path))
+  logger.info(string.format("neotest-dotnet: scanning %s for tests...", path))
 
   local filetype = (vim.endswith(path, ".fs") and "fsharp") or "c_sharp"
 
@@ -139,7 +139,7 @@ DotnetNeotestAdapter.discover_positions = function(path)
     })
   end
 
-  logger.info(string.format("done scanning %s for tests", path))
+  logger.info(string.format("neotest-dotnet: done scanning %s for tests", path))
 
   return tree
 end
@@ -160,7 +160,7 @@ DotnetNeotestAdapter.build_spec = function(args)
     end
   end
 
-  logger.debug("ids:")
+  logger.debug("neotest-dotnet: ids:")
   logger.debug(ids)
 
   local results_path = nio.fn.tempname()
@@ -188,7 +188,7 @@ DotnetNeotestAdapter.build_spec = function(args)
         local dap = require("dap")
         dap.listeners.after.configurationDone["neotest-dotnet"] = function()
           nio.run(function()
-            logger.debug("attached to debug test runner")
+            logger.debug("neotest-dotnet: attached to debug test runner")
             lib.files.write(attached_path, "1")
           end)
         end
@@ -247,8 +247,12 @@ DotnetNeotestAdapter.results = function(spec)
   return parsed
 end
 
+---@class neotest-dotnet.Config
+---@field sdk_path? string path to dotnet sdk. Example: /usr/local/share/dotnet/sdk/9.0.101/
+
 setmetatable(DotnetNeotestAdapter, {
-  __call = function(_, _)
+  __call = function(_, opts)
+    vstest.sdk_path = opts.sdk_path
     return DotnetNeotestAdapter
   end,
 })
