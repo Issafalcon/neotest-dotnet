@@ -30,7 +30,12 @@ M.specflow_test_attributes = {
   "NUnit.Framework.TestAttribute",
 }
 
-M.all_test_attributes = vim.tbl_flatten({
+M.all_test_attributes = vim.fn.has("nvim-0.11") == 1 and vim.iter({
+  M.xunit_test_attributes,
+  M.nunit_test_attributes,
+  M.mstest_test_attributes,
+  M.specflow_test_attributes,
+}):flatten():totable() or vim.tbl_flatten({
   M.xunit_test_attributes,
   M.nunit_test_attributes,
   M.mstest_test_attributes,
@@ -54,7 +59,7 @@ function M.attribute_match_list(custom_attribute_args, framework)
   end
 
   if custom_attribute_args and custom_attribute_args[framework] then
-    attribute_match_list =
+    attribute_match_list = vim.fn.has("nvim-0.11") == 1 and vim.iter( {attribute_match_list, custom_attribute_args[framework] }):flatten():totable() or
       vim.tbl_flatten({ attribute_match_list, custom_attribute_args[framework] })
   end
 
