@@ -30,17 +30,22 @@ M.specflow_test_attributes = {
   "NUnit.Framework.TestAttribute",
 }
 
-M.all_test_attributes = vim.fn.has("nvim-0.11") == 1 and vim.iter({
-  M.xunit_test_attributes,
-  M.nunit_test_attributes,
-  M.mstest_test_attributes,
-  M.specflow_test_attributes,
-}):flatten():totable() or vim.tbl_flatten({
-  M.xunit_test_attributes,
-  M.nunit_test_attributes,
-  M.mstest_test_attributes,
-  M.specflow_test_attributes,
-})
+M.all_test_attributes = vim.fn.has("nvim-0.11") == 1
+    and vim
+      .iter({
+        M.xunit_test_attributes,
+        M.nunit_test_attributes,
+        M.mstest_test_attributes,
+        M.specflow_test_attributes,
+      })
+      :flatten()
+      :totable()
+  or vim.tbl_flatten({
+    M.xunit_test_attributes,
+    M.nunit_test_attributes,
+    M.mstest_test_attributes,
+    M.specflow_test_attributes,
+  })
 
 --- Gets a list of the standard and customized test attributes for xUnit, for use in a tree-sitter predicates
 ---@param custom_attribute_args table The user configured mapping of the custom test attributes
@@ -59,8 +64,9 @@ function M.attribute_match_list(custom_attribute_args, framework)
   end
 
   if custom_attribute_args and custom_attribute_args[framework] then
-    attribute_match_list = vim.fn.has("nvim-0.11") == 1 and vim.iter( {attribute_match_list, custom_attribute_args[framework] }):flatten():totable() or
-      vim.tbl_flatten({ attribute_match_list, custom_attribute_args[framework] })
+    attribute_match_list = vim.fn.has("nvim-0.11") == 1
+        and vim.iter({ attribute_match_list, custom_attribute_args[framework] }):flatten():totable()
+      or vim.tbl_flatten({ attribute_match_list, custom_attribute_args[framework] })
   end
 
   return M.join_test_attributes(attribute_match_list)
@@ -106,7 +112,7 @@ function M.get_test_framework_utils_from_source(source, custom_attribute_args)
   local parsed_query = vim.fn.has("nvim-0.9.0") == 1
       and vim.treesitter.query.parse("c_sharp", framework_query)
     or vim.treesitter.parse_query("c_sharp", framework_query)
-  for _, captures, _ in parsed_query:iter_matches(root, source, nil, nil, {all = false}) do
+  for _, captures, _ in parsed_query:iter_matches(root, source, nil, nil, { all = false }) do
     local test_attribute = vim.fn.has("nvim-0.9.0") == 1
         and vim.treesitter.get_node_text(captures[1], source)
       or vim.treesitter.query.get_node_text(captures[1], source)
