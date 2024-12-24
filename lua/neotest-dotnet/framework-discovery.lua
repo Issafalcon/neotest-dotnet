@@ -106,7 +106,7 @@ function M.get_test_framework_utils_from_source(source, custom_attribute_args)
   local parsed_query = vim.fn.has("nvim-0.9.0") == 1
       and vim.treesitter.query.parse("c_sharp", framework_query)
     or vim.treesitter.parse_query("c_sharp", framework_query)
-  for _, captures in parsed_query:iter_matches(root, source) do
+  for _, captures, _ in parsed_query:iter_matches(root, source, nil, nil, {all = false}) do
     local test_attribute = vim.fn.has("nvim-0.9.0") == 1
         and vim.treesitter.get_node_text(captures[1], source)
       or vim.treesitter.query.get_node_text(captures[1], source)
