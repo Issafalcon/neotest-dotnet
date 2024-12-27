@@ -5,7 +5,11 @@
 <a href="https://github.com/Issafalcon/neotest-dotnet/releases">
   <img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/Issafalcon/neotest-dotnet?style=for-the-badge">
 </a>
+<a href="https://luarocks.org/modules/Issafalcon/neotest-dotnet">
+  <img alt="LuaRocks Pacakage" src="https://img.shields.io/luarocks/v/Issafalcon/neotest-dotnet?logo=lua&color=purple&style=for-the-badge">
+</a>
 </p>
+
 
 # Neotest .NET
 
@@ -24,6 +28,7 @@ neotest-dotnet requires makes a number of assumptions about your environment:
 2. The user is running tests using one of the supported test runners / frameworks (see support grid)
 3. (For Debugging) `netcoredbg` is installed and `nvim-dap` plugin has been configured for `netcoredbg` (see debug config for more details)
 4. Requires [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) and the parser for C#.
+5. Requires `neovim v0.10.0` or later
 
 # Installation
 
@@ -89,6 +94,19 @@ require("neotest").setup({
   }
 })
 ```
+
+## Using `.runsettings` files
+
+The plugin provides commands to select and clear the runsettings files (if any are available in the Neovim working director tree).
+
+To select the runsettings file in a Neovim session run:
+`:NeotestSelectRunsettingsFile`
+
+- This will apply the runsettings to all tests run via the neotest-adapter
+
+To clear the runsettings file in the same session run:
+`:NeotestClearRunsettings`
+
 
 ## Additional `dotnet test` arguments
 
