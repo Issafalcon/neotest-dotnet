@@ -1,27 +1,29 @@
 name: main
-
 on:
   push:
     branches: [main]
   pull_request:
     types: [opened, synchronize]
-
 concurrency:
   group: github.head_ref
   cancel-in-progress: true
-
 jobs:
   lint:
     runs-on: ubuntu-latest
     name: lint
     steps:
       - uses: actions/checkout@v3
-
       - uses: JohnnyMorganz/stylua-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
           args: --check .
+          #documentation:
+          #  runs-on: ubuntu-latest
+          #  name: documentation
+          #  steps:
+          #    - uses: actions/checkout@v3
+  #
 
   tests:
     needs:
@@ -31,41 +33,22 @@ jobs:
     timeout-minutes: 2
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        neovim_version: ["v0.10.0"]
-        include:
-          - os: ubuntu-latest
-            neovim_version: "nightly"
-
+        neovim_version: ["v0.10.0", "v0.10.1", "v0.10.2", "v0.10.3", "nightly"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v3
+      - run: date +%F > todays-date
+      - name: restore cache for today's nightly.
+        uses: actions/cache@v3
         with:
-          dotnet-version: "9.0.x"
-
-      - name: Install C/C++ Compiler
-        uses: rlalik/setup-cpp-compiler@master
+          path: _neovim
+          key: ${{ runner.os }}-x64-${{ hashFiles('todays-date') }}
+      - name: setup neovim
+        uses: rhysd/action-setup-vim@v1
         with:
-          compiler: clang-latest
-
-      - name: Install tree-sitter CLI
-        uses: baptiste0928/cargo-install@v3
-        with:
-          crate: tree-sitter-cli
-
-      - name: Run tests
-        id: test
-        uses: nvim-neorocks/nvim-busted-action@v1
-        with:
-          nvim_version: ${{ matrix.neovim_version }}
-
-      - name: Save neotest log
-        if: always() && steps.test.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: neotest-log-${{ matrix.neovim_version }}-${{ matrix.os }}
-          path: ~/.local/state/nvim/neotest.log
-
+          neovim: true
+          version: ${{ matrix.neovim_version }}
+      - name: run tests
+        run: make test-ci
   release:
     name: release
     if: ${{ github.ref == 'refs/heads/main' }}
@@ -74,13 +57,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - uses: google-github-actions/release-please-action@v3
         id: release
         with:
           release-type: simple
           package-name: neotest-dotnet
-
       - name: tag stable versions
         if: ${{ steps.release.outputs.release_created }}
         run: |

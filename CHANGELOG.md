@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.0](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.5...v1.7.0) (2024-12-27)
+
+
+### Features
+
+* **runsettings:** Adds support for runsettings files ([4c82420](https://github.com/Issafalcon/neotest-dotnet/commit/4c8242099d6c222e8340c0a09bc34df2bac81dcf))
+* support luarocks/rocks.nvim ([c7ccbaa](https://github.com/Issafalcon/neotest-dotnet/commit/c7ccbaaee488c5668ccd9b6f7b889fda6344fa51))
+
+
+### Bug Fixes
+
+* add opts for legacy behavior for Quer:iter_matches ([da35fac](https://github.com/Issafalcon/neotest-dotnet/commit/da35fac262cb6bd2c7a99c7c8f3e2ecc465b9a35))
+* use vim.iter():flatten() instead of deprecated vim.tbl_flatten() on 0.11+ ([a4324ce](https://github.com/Issafalcon/neotest-dotnet/commit/a4324cea9dbd13a076d31aa2fd23e0d35b4292c5))
+* **workflow:** Updating supported versions ([78a3620](https://github.com/Issafalcon/neotest-dotnet/commit/78a3620c339060afed99ef7af7e76325f3f7110e))
+
 ## [1.6.5](https://github.com/Issafalcon/neotest-dotnet/compare/v1.6.4...v1.6.5) (2024-06-01)
 
 

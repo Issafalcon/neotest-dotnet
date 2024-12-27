@@ -5,6 +5,9 @@
 <a href="https://github.com/Issafalcon/neotest-dotnet/releases">
   <img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/Issafalcon/neotest-dotnet?style=for-the-badge">
 </a>
+<a href="https://luarocks.org/modules/Issafalcon/neotest-dotnet">
+  <img alt="LuaRocks Pacakage" src="https://img.shields.io/luarocks/v/Issafalcon/neotest-dotnet?logo=lua&color=purple&style=for-the-badge">
+</a>
 </p>
 
 # Neotest .NET
@@ -19,8 +22,10 @@ Neotest adapter for dotnet tests
 neotest-dotnet requires makes a number of assumptions about your environment:
 
 1. The `dotnet sdk` that is compatible with the current project is installed and the `dotnet` executable is on the users runtime path.
-3. (For Debugging) `netcoredbg` is installed and `nvim-dap` plugin has been configured for `netcoredbg` (see debug config for more details)
-4. Requires treesitter parser for either `C#` or `F#`
+2. (For Debugging) `netcoredbg` is installed and `nvim-dap` plugin has been configured for `netcoredbg` (see debug config for more details)
+3. Requires treesitter parser for either `C#` or `F#`
+4. Requires `neovim v0.10.0` or later
+   > > > > > > > refs/rewritten/onto
 
 # Installation
 
@@ -103,6 +108,7 @@ If you have a use case that the adapter isn't quite able to cover, a more detail
 4. You should be able to piece together how the nodes in the neotest summary window are created (Using logs from tests that are "Found")
 
 The general flow for test discovery and execution is as follows:
+
 1. Spawn VSTest instance at start-up.
 2. On test discovery: Send list of files to VSTest instance.
    - Once tests have been discovered the VSTest instance will write the discovered test cases to a file.
