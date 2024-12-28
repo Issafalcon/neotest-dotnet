@@ -18,6 +18,14 @@ open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Client.Interfaces
 open Microsoft.VisualStudio.TestPlatform.ObjectModel.Logging
 
+type NeoTestResultError = { message: string }
+
+type NeotestResult =
+    { status: string
+      short: string
+      output: string
+      errors: NeoTestResultError array }
+
 module TestDiscovery =
     let parseArgs (args: string) =
         args.Split(" ", StringSplitOptions.TrimEntries &&& StringSplitOptions.RemoveEmptyEntries)
@@ -42,7 +50,8 @@ module TestDiscovery =
 
             {| StreamPath = args[0]
                OutputPath = args[1]
-               Ids = args[2..] |> Array.map Guid.Parse |}
+               ProcessOutput = args[2]
+               Ids = args[3..] |> Array.map Guid.Parse |}
             |> ValueOption.Some
         else
             ValueOption.None
@@ -56,7 +65,8 @@ module TestDiscovery =
                AttachedPath = args[1]
                StreamPath = args[2]
                OutputPath = args[3]
-               Ids = args[4..] |> Array.map Guid.Parse |}
+               ProcessOutput = args[4]
+               Ids = args[5..] |> Array.map Guid.Parse |}
             |> ValueOption.Some
         else
             ValueOption.None
@@ -74,33 +84,66 @@ module TestDiscovery =
           LineNumber: int
           FullyQualifiedName: string }
 
-    let discoveredTests = ConcurrentDictionary<string, TestCase seq>()
+    let mutable discoveredTests = Map.empty<string, TestCase seq>
 
     let getTestCases ids =
         let idMap =
             discoveredTests
-            |> _.Values
+            |> Map.values
             |> Seq.collect (Seq.map (fun testCase -> testCase.Id, testCase))
             |> Map
 
         ids |> Array.choose (fun id -> Map.tryFind id idMap)
 
-    type PlaygroundTestDiscoveryHandler() =
+    type PlaygroundTestDiscoveryHandler(waitFile: string, outputFile: string) =
         interface ITestDiscoveryEventsHandler2 with
             member _.HandleDiscoveredTests(discoveredTestCases: IEnumerable<TestCase>) =
-                discoveredTestCases
-                |> Seq.groupBy _.CodeFilePath
-                |> Seq.iter (fun (file, testCases) ->
-                    discoveredTests.AddOrUpdate(file, testCases, (fun _ _ -> testCases)) |> ignore)
+                Console.WriteLine($"Discovered tests: {Seq.length discoveredTestCases}")
 
-            member _.HandleDiscoveryComplete(_, _) = ()
+                discoveredTestCases
+                |> Seq.groupBy (fun testCase ->
+                    if String.IsNullOrWhiteSpace testCase.CodeFilePath then
+                        testCase.Source
+                    else
+                        testCase.CodeFilePath)
+                |> Seq.iter (fun (file, testCases) ->
+                    Console.WriteLine($"Discovered {Seq.length testCases} tests for: {file}")
+                    discoveredTests <- Map.add file testCases discoveredTests)
+
+            member _.HandleDiscoveryComplete(_, _) =
+                use testsWriter = new StreamWriter(outputFile, append = false)
+
+                let testFiles = discoveredTests.Keys |> Seq.toArray |> String.concat ", "
+
+                Console.WriteLine($"Discovered tests for: {testFiles}")
+
+                discoveredTests
+                |> Seq.map (fun x ->
+                    (x.Key,
+                     x.Value
+                     |> Seq.map (fun testCase ->
+                         testCase.Id,
+                         { CodeFilePath = testCase.CodeFilePath
+                           DisplayName = testCase.DisplayName
+                           LineNumber = testCase.LineNumber
+                           FullyQualifiedName = testCase.FullyQualifiedName })
+                     |> Map))
+                |> Map
+                |> JsonConvert.SerializeObject
+                |> testsWriter.WriteLine
+
+                use waitFileWriter = new StreamWriter(waitFile, append = false)
+                waitFileWriter.WriteLine("1")
+
+                Console.WriteLine($"Wrote test results to {outputFile}")
 
             member __.HandleLogMessage(level, message) = logHandler level message
 
             member __.HandleRawMessage(_) = ()
 
-    type PlaygroundTestRunHandler(streamOutputPath, outputFilePath) =
+    type PlaygroundTestRunHandler(streamOutputPath, outputFilePath, processOutputPath) =
         let resultsDictionary = ConcurrentDictionary()
+        let processOutputWriter = new StreamWriter(processOutputPath, append = true)
 
         interface ITestRunEventsHandler with
             member _.HandleTestRunComplete
@@ -109,7 +152,9 @@ module TestDiscovery =
                 use outputWriter = new StreamWriter(outputFilePath, append = false)
                 outputWriter.WriteLine(JsonConvert.SerializeObject(resultsDictionary))
 
-            member __.HandleLogMessage(level, message) = logHandler level message
+            member __.HandleLogMessage(_level, message) =
+                if not <| String.IsNullOrWhiteSpace message then
+                    processOutputWriter.WriteLine(message)
 
             member __.HandleRawMessage(_rawMessage) = ()
 
@@ -137,16 +182,23 @@ module TestDiscovery =
 
                         let errors =
                             match errorMessage with
-                            | Some error -> [| {| message = error |} |]
+                            | Some error -> [| { message = error } |]
                             | None -> [||]
 
-                        result.TestCase.Id,
-                        {| status = outcome
-                           short = $"{result.TestCase.DisplayName}:{outcome}"
-                           errors = errors |})
+                        let id = result.TestCase.Id
 
-                for (id, result) in results do
-                    resultsDictionary.AddOrUpdate(id, result, (fun _ _ -> result)) |> ignore
+                        let neoTestResult =
+                            { status = outcome
+                              short = $"{result.TestCase.DisplayName}:{outcome}"
+                              output = Path.GetTempPath() + Guid.NewGuid().ToString()
+                              errors = errors }
+
+                        File.WriteAllText(neoTestResult.output, result.ToString())
+
+                        resultsDictionary.AddOrUpdate(id, neoTestResult, (fun _ _ -> neoTestResult))
+                        |> ignore
+
+                        (id, neoTestResult))
 
                 use streamWriter = new StreamWriter(streamOutputPath, append = true)
 
@@ -157,17 +209,18 @@ module TestDiscovery =
 
             member __.LaunchProcessWithDebuggerAttached(_testProcessStartInfo) = 1
 
+        interface IDisposable with
+            member _.Dispose() = processOutputWriter.Dispose()
+
     type DebugLauncher(pidFile: string, attachedFile: string) =
         interface ITestHostLauncher2 with
             member this.LaunchTestHost(defaultTestHostStartInfo: TestProcessStartInfo) =
-                (this :> ITestHostLauncher)
-                    .LaunchTestHost(defaultTestHostStartInfo, CancellationToken.None)
+                (this :> ITestHostLauncher).LaunchTestHost(defaultTestHostStartInfo, CancellationToken.None)
 
             member _.LaunchTestHost(_defaultTestHostStartInfo: TestProcessStartInfo, _ct: CancellationToken) = 1
 
             member this.AttachDebuggerToProcess(pid: int) =
-                (this :> ITestHostLauncher2)
-                    .AttachDebuggerToProcess(pid, CancellationToken.None)
+                (this :> ITestHostLauncher2).AttachDebuggerToProcess(pid, CancellationToken.None)
 
             member _.AttachDebuggerToProcess(pid: int, ct: CancellationToken) =
                 use cts = CancellationTokenSource.CreateLinkedTokenSource(ct)
@@ -227,68 +280,55 @@ module TestDiscovery =
             match Console.ReadLine() with
             | DiscoveryRequest args ->
                 // spawn as task to allow running discovery concurrently
+                let sourcesStr = args.Sources |> String.concat " "
+
+                try
+                    let discoveryHandler =
+                        PlaygroundTestDiscoveryHandler(args.WaitFile, args.OutputPath) :> ITestDiscoveryEventsHandler2
+
+                    Console.WriteLine($"Discovering tests for: {sourcesStr}")
+                    r.DiscoverTests(args.Sources, sourceSettings, options, testSession, discoveryHandler)
+                with e ->
+                    Console.WriteLine($"failed to discovery tests for {sourcesStr}. Exception: {e}")
+
+            | RunTests args ->
                 task {
-                    do! Task.Yield()
+                    let testCases = getTestCases args.Ids
 
-                    try
-                        let discoveryHandler =
-                            PlaygroundTestDiscoveryHandler() :> ITestDiscoveryEventsHandler2
+                    use testHandler =
+                        new PlaygroundTestRunHandler(args.StreamPath, args.OutputPath, args.ProcessOutput)
+                    // spawn as task to allow running concurrent tests
+                    do! r.RunTestsAsync(testCases, sourceSettings, testHandler)
+                    Console.WriteLine($"Done running tests for ids: ")
 
-                        for source in args.Sources do
-                            Console.WriteLine($"Discovering tests for: {source}")
-                            r.DiscoverTests([| source |], sourceSettings, options, testSession, discoveryHandler)
+                    for id in args.Ids do
+                        Console.Write($"{id} ")
 
-                        use testsWriter = new StreamWriter(args.OutputPath, append = false)
-
-                        discoveredTests
-                        |> Seq.map (fun x ->
-                            (x.Key,
-                             x.Value
-                             |> Seq.map (fun testCase ->
-                                 testCase.Id,
-                                 { CodeFilePath = testCase.CodeFilePath
-                                   DisplayName = testCase.DisplayName
-                                   LineNumber = testCase.LineNumber
-                                   FullyQualifiedName = testCase.FullyQualifiedName })
-                             |> Map))
-                        |> Map
-                        |> JsonConvert.SerializeObject
-                        |> testsWriter.WriteLine
-                    with e ->
-                        Console.WriteLine($"failed to discovery tests for {args.Sources}. Exception: {e}")
-
-                    use waitFileWriter = new StreamWriter(args.WaitFile, append = false)
-                    waitFileWriter.WriteLine("1")
-
-                    Console.WriteLine($"Wrote test results to {args.WaitFile}")
+                    return ()
                 }
                 |> ignore
-            | RunTests args ->
-                let testCases = getTestCases args.Ids
-
-                let testHandler = PlaygroundTestRunHandler(args.StreamPath, args.OutputPath)
-                // spawn as task to allow running concurrent tests
-                r.RunTestsAsync(testCases, sourceSettings, testHandler) |> ignore
-                ()
             | DebugTests args ->
-                let testCases = getTestCases args.Ids
-
-                let testHandler = PlaygroundTestRunHandler(args.StreamPath, args.OutputPath)
-                let debugLauncher = DebugLauncher(args.PidPath, args.AttachedPath)
-                Console.WriteLine($"Starting {testCases.Length} tests in debug-mode")
-
                 task {
+                    let testCases = getTestCases args.Ids
+
+                    use testHandler =
+                        new PlaygroundTestRunHandler(args.StreamPath, args.OutputPath, args.ProcessOutput)
+
+                    let debugLauncher = DebugLauncher(args.PidPath, args.AttachedPath)
+                    Console.WriteLine($"Starting {testCases.Length} tests in debug-mode")
+
                     do! Task.Yield()
                     r.RunTestsWithCustomTestHost(testCases, sourceSettings, testHandler, debugLauncher)
                 }
                 |> ignore
-
-                ()
-            | _ -> loop <- false
+            | input ->
+                Console.WriteLine($"Unknown command: {input}. Terminating process.")
+                Environment.ExitCode <- 1
+                loop <- false
 
         r.EndSession()
 
-        0
+        Environment.ExitCode
 
     let args = fsi.CommandLineArgs |> Array.tail
 

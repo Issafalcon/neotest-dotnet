@@ -25,7 +25,6 @@ neotest-dotnet requires makes a number of assumptions about your environment:
 2. (For Debugging) `netcoredbg` is installed and `nvim-dap` plugin has been configured for `netcoredbg` (see debug config for more details)
 3. Requires treesitter parser for either `C#` or `F#`
 4. Requires `neovim v0.10.0` or later
-   > > > > > > > refs/rewritten/onto
 
 # Installation
 
@@ -67,7 +66,11 @@ require("neotest").setup({
     require("neotest-dotnet")({
       -- Path to dotnet sdk path.
       -- Used in cases where the sdk path cannot be auto discovered.
-      sdk_path = "/usr/local/dotnet/sdk/9.0.101/"
+      sdk_path = "/usr/local/dotnet/sdk/9.0.101/",
+      -- table is passed directly to DAP when debugging tests.
+      dap_settings = {
+        adapter = "netcoredbg",
+      }
     })
   }
 })
