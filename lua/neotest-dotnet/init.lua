@@ -26,14 +26,14 @@ local dap_settings = {
 local DotnetNeotestAdapter = { name = "neotest-dotnet" }
 
 function DotnetNeotestAdapter.root(path)
-  local solution = lib.files.match_root_pattern("*.sln")(path)
+  local solution_dir = lib.files.match_root_pattern("*.sln")(path)
     or lib.files.match_root_pattern("*.slnx")(path)
 
-  if solution then
-    vstest.discover_solution_tests(vim.fs.dirname(solution))
+  if solution_dir then
+    vstest.discover_solution_tests(solution_dir)
   end
 
-  return solution or lib.files.match_root_pattern("*.[cf]sproj")(path)
+  return solution_dir or lib.files.match_root_pattern("*.[cf]sproj")(path)
 end
 
 function DotnetNeotestAdapter.is_test_file(file_path)
