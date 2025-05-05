@@ -29,7 +29,6 @@ function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, dotn
   local results_path = async.fn.tempname() .. ".trx"
   filter_arg = filter_arg or ""
 
-  dprint("filer_arg", filter_arg)
   local command = {
     "dotnet",
     "test",
@@ -119,7 +118,6 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args, tree_b
         table.insert(filter, "Name~" .. data.name)
       end
     end
-    dprint("filter:", filter)
 
     local spec = BuildSpecUtils.create_single_spec(
       position,
