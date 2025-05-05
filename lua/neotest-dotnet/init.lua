@@ -77,9 +77,6 @@ DotnetNeotestAdapter._position_id = function(...)
   return framework.position_id(...)
 end
 
----@type table<string,neotest.Tree>
-local tree_by_path_cache = {}
-
 ---@param path any The path to the file to discover positions in
 ---@return neotest.Tree
 DotnetNeotestAdapter.discover_positions = function(path)
@@ -116,7 +113,6 @@ DotnetNeotestAdapter.discover_positions = function(path)
     build_position = "require('neotest-dotnet')._build_position",
     position_id = "require('neotest-dotnet')._position_id",
   })
-  tree_by_path_cache[path] = tree
 
   logger.debug("neotest-dotnet: Original Position Tree: ")
   logger.debug(tree:to_list())

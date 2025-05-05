@@ -67,8 +67,7 @@ function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, dotn
 end
 
 ---@param tree neotest.Tree
----@param tree_by_path_cache table<string, neotest.Tree>
-function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args, tree_by_path_cache)
+function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
   local position = tree:data()
 
   specs = specs or {}
@@ -93,7 +92,7 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args, tree_b
       -- Not in a project root, so find all child dirs and recurse through them as well so we can
       -- add all the specs for all projects in the solution dir.
       for _, child in ipairs(tree:children()) do
-        BuildSpecUtils.create_specs(child, specs, dotnet_additional_args, tree_by_path_cache)
+        BuildSpecUtils.create_specs(child, specs, dotnet_additional_args)
       end
     end
   elseif position.type == "namespace" or position.type == "test" then
@@ -109,10 +108,8 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args, tree_b
     table.insert(specs, spec)
   elseif position.type == "file" then
     local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
-    local file_tree = tree_by_path_cache[position.path]
-
     local filter = {}
-    for _, child in file_tree:iter_nodes() do
+    for _, child in tree:iter_nodes() do
       local data = child:data()
       if data.is_class then
         table.insert(filter, "Name~" .. data.name)
