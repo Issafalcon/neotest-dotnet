@@ -134,7 +134,7 @@ DotnetNeotestAdapter.build_spec = function(args)
 
   local additional_args = args.dotnet_additional_args or dotnet_additional_args or nil
 
-  local specs = build_spec_utils.create_specs(args.tree, nil, additional_args, tree_by_path_cache)
+  local specs = build_spec_utils.create_specs(args.tree, nil, additional_args)
 
   logger.debug("neotest-dotnet: Created " .. #specs .. " specs, with contents: ")
   logger.debug(specs)
