@@ -116,13 +116,15 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
       end
     end
 
-    local spec = BuildSpecUtils.create_single_spec(
-      position,
-      proj_root,
-      '--filter "' .. table.concat(filter, "|") .. '"',
-      dotnet_additional_args
-    )
-    table.insert(specs, spec)
+    if #filter > 0 then
+      local spec = BuildSpecUtils.create_single_spec(
+        position,
+        proj_root,
+        '--filter "' .. table.concat(filter, "|") .. '"',
+        dotnet_additional_args
+      )
+      table.insert(specs, spec)
+    end
   end
 
   return #specs < 0 and nil or specs
