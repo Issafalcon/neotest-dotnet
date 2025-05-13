@@ -72,7 +72,9 @@ function DotNetUtils.get_test_full_names(project_path)
         if test_names_started then
           -- Trim leading and trailing whitespace before writing
           line = line:gsub("^%s*(.-)%s*$", "%1")
-          data_accum:push(line .. "\n")
+          nio.run(function()
+            data_accum:push(line .. "\n")
+          end)
         end
         if line:find("The following Tests are available") then
           test_names_started = true
