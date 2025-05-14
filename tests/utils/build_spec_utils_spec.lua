@@ -93,7 +93,7 @@ describe("create_specs", function()
       {
         command = "dotnet test "
           .. test_root_path
-          .. '  --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
+          .. ' --filter "Name~UnitTest1" --results-directory /tmp/output --logger "trx;logfilename=test_result.trx"',
         context = {
           file = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
           id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
@@ -117,6 +117,25 @@ describe("create_specs", function()
           path = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
           range = { 0, 0, 18, 1 },
           type = "namespace",
+        },
+        {
+          {
+            id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs::xunit.testproj1::UnitTest1",
+            name = "UnitTest1",
+            path = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
+            range = { 2, 0, 18, 1 },
+            type = "namespace",
+            is_class = true,
+          },
+          {
+            {
+              id = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs::xunit.testproj1::UnitTest1::Test1",
+              name = "Test1",
+              path = "/home/issafalcon/repos/neotest-dotnet-tests/xunit/testproj1/UnitTest1.cs",
+              range = { 4, 1, 8, 2 },
+              type = "test",
+            },
+          },
         },
       },
     }, function(pos)

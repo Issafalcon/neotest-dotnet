@@ -66,6 +66,7 @@ function BuildSpecUtils.create_single_spec(position, proj_root, filter_arg, dotn
   }
 end
 
+---@param tree neotest.Tree
 function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
   local position = tree:data()
 
@@ -107,9 +108,23 @@ function BuildSpecUtils.create_specs(tree, specs, dotnet_additional_args)
     table.insert(specs, spec)
   elseif position.type == "file" then
     local proj_root = lib.files.match_root_pattern("*.csproj")(position.path)
+    local filter = {}
+    for _, child in tree:iter_nodes() do
+      local data = child:data()
+      if data.is_class then
+        table.insert(filter, "Name~" .. data.name)
+      end
+    end
 
-    local spec = BuildSpecUtils.create_single_spec(position, proj_root, "", dotnet_additional_args)
-    table.insert(specs, spec)
+    if #filter > 0 then
+      local spec = BuildSpecUtils.create_single_spec(
+        position,
+        proj_root,
+        '--filter "' .. table.concat(filter, "|") .. '"',
+        dotnet_additional_args
+      )
+      table.insert(specs, spec)
+    end
   end
 
   return #specs < 0 and nil or specs
