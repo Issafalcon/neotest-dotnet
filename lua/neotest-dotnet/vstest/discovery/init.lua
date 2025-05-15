@@ -178,26 +178,8 @@ function M.discover_solution_tests(root)
   solution_semaphore.acquire()
 
   local res = dotnet_utils.get_solution_projects(root)
-  if res.solution then
-    logger.debug("neotest-dotnet: building solution")
 
-    local build_exit_code, build_res = lib.process.run({
-      "dotnet",
-      "build",
-      res.solution,
-    }, {
-      stderr = true,
-      stdout = true,
-    })
-
-    if build_exit_code ~= 0 then
-      nio.scheduler()
-      vim.notify_once(
-        "Failed to build solution " .. res.solution .. " with error: " .. build_res.stdout,
-        vim.log.levels.ERROR
-      )
-    end
-  end
+  dotnet_utils.build_path(root)
 
   local project_paths = {}
 

@@ -20,6 +20,8 @@ local dap_settings = {
   justMyCode = false,
 }
 
+local solution
+
 ---@package
 ---@type neotest.Adapter
 ---@diagnostic disable-next-line: missing-fields
@@ -30,7 +32,8 @@ function DotnetNeotestAdapter.root(path)
     or lib.files.match_root_pattern("*.slnx")(path)
 
   if solution_dir then
-    vstest.discover_solution_tests(solution_dir)
+    test_discovery.discover_solution_tests(solution_dir)
+    solution = solution_dir
   end
 
   return solution_dir or lib.files.match_root_pattern("*.[cf]sproj")(path)
@@ -330,11 +333,16 @@ function DotnetNeotestAdapter.build_spec(args)
   end
 
   local pos = args.tree:data()
+  local projects = {}
 
   local ids = {}
 
   for _, position in tree:iter() do
     if position.type == "test" then
+      local proj_info = dotnet_utils.get_proj_info(position.path)
+      if proj_info then
+        projects[proj_info.proj_file] = proj_info
+      end
       ids[#ids + 1] = position.id
     end
   end
@@ -352,10 +360,18 @@ function DotnetNeotestAdapter.build_spec(args)
   if args.strategy == "dap" then
     local attached_path = nio.fn.tempname()
 
+    local proj_info = dotnet_utils.get_proj_info(pos.path)
+
+    if solution then
+      dotnet_utils.build_path(solution)
+    else
+      dotnet_utils.build_project(proj_info)
+    end
+
     local pid = vstest.debug_tests(attached_path, stream_path, results_path, ids)
     --- @type dap.Configuration
     strategy = vim.tbl_extend("force", dap_settings, {
-      cwd = dotnet_utils.get_proj_info(pos.path).proj_dir,
+      cwd = proj_info.proj_dir,
       processId = pid and vim.trim(pid),
       before = function()
         local dap = require("dap")
@@ -374,6 +390,8 @@ function DotnetNeotestAdapter.build_spec(args)
       result_path = results_path,
       stream_path = stream_path,
       stop_stream = stop_stream,
+      projects = vim.tbl_values(projects),
+      solution = solution,
       ids = ids,
     },
     stream = function()

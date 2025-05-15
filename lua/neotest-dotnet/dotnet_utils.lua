@@ -292,27 +292,31 @@ function M.get_project_last_modified(project)
 end
 
 ---@async
----@param project DotnetProjectInfo
+---@param path string
 ---@return boolean success if build was successful
-function M.build_project(project)
-  logger.debug("neotest-dotnet: building project " .. project.proj_file)
+function M.build_path(path)
+  logger.debug("neotest-dotnet: building path " .. path)
   local exitCode, out = lib.process.run(
-    { "dotnet", "build", project.proj_file },
+    { "dotnet", "build", path },
     { stdout = true, stderr = true }
   )
 
   if exitCode ~= 0 then
     nio.scheduler()
-    logger.error("neotest-dotnet: failed to build project " .. project.proj_file)
+    logger.error("neotest-dotnet: failed to build path " .. path)
     logger.error(out.stdout)
-    vim.notify_once(
-      "neotest-dotnet: failed to build project " .. project.proj_file,
-      vim.log.levels.ERROR
-    )
+    vim.notify_once("neotest-dotnet: failed to build project " .. path, vim.log.levels.ERROR)
     return false
   end
 
   return true
+end
+
+---@async
+---@param project DotnetProjectInfo
+---@return boolean success if build was successful
+function M.build_project(project)
+  return M.build_path(project.proj_file)
 end
 
 return M

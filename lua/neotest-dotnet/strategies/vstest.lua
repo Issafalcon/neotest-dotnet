@@ -1,6 +1,8 @@
 local nio = require("nio")
 local lib = require("neotest.lib")
+local logger = require("neotest.logging")
 local vstest = require("neotest-dotnet.vstest")
+local dotnet_utils = require("neotest-dotnet.dotnet_utils")
 local cli_wrapper = require("neotest-dotnet.vstest.cli_wrapper")
 
 ---@async
@@ -9,6 +11,17 @@ local cli_wrapper = require("neotest-dotnet.vstest.cli_wrapper")
 return function(spec)
   local process_output = nio.fn.tempname()
   lib.files.write(process_output, "")
+
+  logger.debug("Running vstest with output to: " .. process_output)
+  logger.debug(spec)
+
+  if spec.context.solution then
+    dotnet_utils.build_path(spec.context.solution)
+  else
+    for _, project in ipairs(spec.context.projects) do
+      dotnet_utils.build_project(project)
+    end
+  end
 
   local wait_file = vstest.run_tests(
     spec.context.stream_path,
