@@ -27,14 +27,14 @@ describe("Test test detection", function()
     end
 
     local expected_tests = {
-      "X.Tests.A.My test",
-      "X.Tests.A.My test 2",
-      "X.Tests.A.My test 3",
-      "X.Tests.A.My slow test",
-      "X.Tests.A.Pass cool test parametrized function<Int32, Int32>(x: 11, _y: 22, _z: 33)",
-      "X.Tests.A.Pass cool test parametrized function<Int32, Int32>(x: 10, _y: 20, _z: 30)",
-      "X.Tests.X Should.Pass cool test",
-      "X.Tests.X Should.Pass cool test parametrized<Int32, Int32>(x: 10, _y: 20, _z: 30)",
+      "My test",
+      "My test 2",
+      "My test 3",
+      "My slow test",
+      "Pass cool test parametrized function<Int32, Int32>(x: 11, _y: 22, _z: 33)",
+      "Pass cool test parametrized function<Int32, Int32>(x: 10, _y: 20, _z: 30)",
+      "Pass cool test",
+      "Pass cool test parametrized<Int32, Int32>(x: 10, _y: 20, _z: 30)",
     }
 
     table.sort(expected_tests)
@@ -57,7 +57,12 @@ describe("Test test detection", function()
       end
     end
 
-    local expected_tests = { "CSharpTest.UnitTest1.Test1" }
+    local expected_tests = {
+      "Test1",
+      "Name of test 2",
+      "TheoryTest(startDate: 2019-01-01T00:00:01.0000000, endDate: 2020-01-01T00:00:01.0000000)",
+      "TheoryTest(startDate: 2019-01-01T00:00:01.0000000, endDate: 2019-12-31T23:59:59.0000000)",
+    }
 
     table.sort(expected_tests)
     table.sort(tests)

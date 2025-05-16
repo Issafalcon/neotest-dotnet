@@ -16,7 +16,7 @@ describe("test cache should", function()
       ["C:/src/CSharpTest/CSharpTest.cs"] = {
         {
           CodeFilePath = "C:\\src\\CSharpTest\\CSharpTest.cs",
-          DisplayName = "CSharpTest.CSharpTest.TestMethod1",
+          DisplayName = "TestMethod1",
           FullyQualifiedName = "CSharpTest.CSharpTest.TestMethod1",
           LineNumber = 10,
         },
@@ -30,7 +30,7 @@ describe("test cache should", function()
     local expected = {
       {
         CodeFilePath = "C:\\src\\CSharpTest\\CSharpTest.cs",
-        DisplayName = "CSharpTest.CSharpTest.TestMethod1",
+        DisplayName = "TestMethod1",
         FullyQualifiedName = "CSharpTest.CSharpTest.TestMethod1",
         LineNumber = 10,
       },
@@ -51,7 +51,7 @@ describe("test cache should", function()
       [vim.fs.normalize("C:\\src\\CSharpTest\\CSharpTest.cs", { win = true })] = {
         {
           CodeFilePath = "C:\\src\\CSharpTest\\CSharpTest.cs",
-          DisplayName = "CSharpTest.CSharpTest.TestMethod1",
+          DisplayName = "TestMethod1",
           FullyQualifiedName = "CSharpTest.CSharpTest.TestMethod1",
           LineNumber = 10,
         },
@@ -65,7 +65,7 @@ describe("test cache should", function()
     local expected = {
       {
         CodeFilePath = "C:\\src\\CSharpTest\\CSharpTest.cs",
-        DisplayName = "CSharpTest.CSharpTest.TestMethod1",
+        DisplayName = "TestMethod1",
         FullyQualifiedName = "CSharpTest.CSharpTest.TestMethod1",
         LineNumber = 10,
       },

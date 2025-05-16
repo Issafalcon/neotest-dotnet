@@ -14,7 +14,7 @@ local project_semaphores = {}
 ---@param projects DotnetProjectInfo[]
 ---@return table?
 local function discover_tests_in_projects(projects)
-  local json
+  local tests_in_files
 
   local wait_file = nio.fn.tempname()
   local output_file = nio.fn.tempname()
@@ -49,13 +49,30 @@ local function discover_tests_in_projects(projects)
 
     logger.debug("neotest-dotnet: file has been populated. Extracting test cases...")
 
-    json = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
+    tests_in_files = (content and vim.json.decode(content, { luanil = { object = true } })) or {}
+
+    -- DisplayName may be almost equal to FullyQualifiedName of a test
+    -- In this case the DisplayName contains a lot of redundant information in the neotest tree.
+    -- Thus we want to detect this for the test cases and if a match is found
+    -- we can shorten the display name to the section after the last period
+    short_test_names = {}
+    for path, test_cases in pairs(tests_in_files) do
+      short_test_names[path] = {}
+      for id, test in pairs(test_cases) do
+        short_name = test.DisplayName
+        if vim.startswith(test.DisplayName, test.FullyQualifiedName) then
+          short_name = string.gsub(test.DisplayName, "[^(]+%.", "", 1)
+        end
+        short_test_names[path][id] = vim.tbl_extend("force", test, { DisplayName = short_name })
+      end
+    end
+    tests_in_files = short_test_names
 
     logger.trace("neotest-dotnet: done decoding test cases:")
-    logger.trace(json)
+    logger.trace(tests_in_files)
   end
 
-  return json
+  return tests_in_files
 end
 
 ---@param project DotnetProjectInfo
