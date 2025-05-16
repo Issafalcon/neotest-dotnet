@@ -1,6 +1,5 @@
 local nio = require("nio")
 local logger = require("neotest.logging")
-local file_utils = require("neotest-dotnet.files")
 
 local M = {}
 
@@ -29,7 +28,7 @@ function M.populate_discovery_cache(project, test_cases, last_modified)
   cache_semaphore.with(function()
     last_discovery[project.proj_file] = last_modified or os.time()
     for path, test_case in pairs(test_cases) do
-      discovery_cache[file_utils.abspath(path)] = test_case
+      discovery_cache[path] = test_case
     end
   end)
 end
@@ -40,12 +39,10 @@ end
 function M.get_cache_entry(project, path)
   cache_semaphore.acquire()
 
-  local normalized_path = file_utils.abspath(path)
-
-  local test_cases = discovery_cache[normalized_path]
+  local test_cases = discovery_cache[path]
 
   logger.trace(discovery_cache)
-  logger.debug("Cache entry for " .. normalized_path)
+  logger.debug("Cache entry for " .. path)
   logger.debug(test_cases)
 
   cache_semaphore.release()
