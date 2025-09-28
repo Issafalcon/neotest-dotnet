@@ -269,7 +269,7 @@ describe("create_specs", function()
     end
   )
 
-  -- Caters for situation where root directory contains a .sln file, and there are nested dirs with .csproj files in them
+  -- Caters for situation where root directory contains a .sln/.slnx file, and there are nested dirs with .csproj files in them
   async.it(
     "should return multiple specs when the position is 'dir' type and contains nested project roots",
     function()

@@ -11,7 +11,7 @@ local discovery_root = "project"
 
 DotnetNeotestAdapter.root = function(path)
   if discovery_root == "solution" then
-    return lib.files.match_root_pattern("*.sln")(path)
+    return lib.files.match_root_pattern("*.sln", "*.slnx")(path)
   else
     return lib.files.match_root_pattern("*.csproj", "*.fsproj")(path)
   end
