@@ -115,7 +115,7 @@ return function(spec)
       attach_win = lib.ui.float.open({
         buffer = attach_buf,
       })
-      vim.api.nvim_buf_set_option(attach_buf, "filetype", "neotest-attach")
+      vim.api.nvim_set_option_value("filetype", "neotest-attach", { buf = attach_buf })
       attach_win:jump_to()
     end,
     result = function()

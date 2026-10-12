@@ -57,7 +57,7 @@ function DotNetUtils.get_test_full_names(project_path)
   assert(not open_err, open_err)
 
   data_accum:subscribe(function(data)
-    vim.loop.fs_write(stream_fd, data, nil, function(write_err)
+    vim.uv.fs_write(stream_fd, data, nil, function(write_err)
       assert(not write_err, write_err)
     end)
   end)
